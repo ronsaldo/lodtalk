@@ -1,0 +1,73 @@
+"Some methods that could be required by the runtime"
+self class: HashedCollection.
+
+self method [
+initialize
+    capacity := 0.
+    tally := 0.
+].
+
+"Lookup key"
+self class: LookupKey class.
+self method [
+key: key
+    ^ self basicNew key: key
+].
+
+self class: LookupKey.
+self method [
+key
+    ^ key
+].
+
+self method [
+key: anObject
+    key := anObject
+].
+
+"Association"
+self class: Association class.
+self method [
+key: key value: value
+    ^ self basicNew key: key; value: value
+].
+
+self class: Association.
+self method [
+value
+    ^ value
+].
+
+self method [
+value: anObject
+    value := anObject
+].
+
+"For the System dictionary"
+self class: Dictionary.
+self method [
+at: key put: value
+    | oldAssociation |
+    oldAssociation := self associationAtOrNil: key.
+    oldAssociation ifNotNil: [
+        "OSIO print: 'IfNotNil taken'; print: key."
+        oldAssociation value: value.
+        ^ value
+    ].
+
+    self putAssociation: (Association key: key value: value).
+    ^ value
+].
+
+"The smalltalk image"
+self class: SmalltalkImage.
+
+self method [
+atOrNil: aSymbol
+    ^ globals at: aSymbol
+].
+
+self method [
+at: aSymbol put: value
+    ^ globals at: aSymbol put: value
+].

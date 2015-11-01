@@ -1,0 +1,18 @@
+"Script context methods"
+self class: ScriptContext.
+self category: 'accessing'.
+
+self method [
+currentClass
+    ^ currentClass
+].
+
+self method [
+category
+    ^ currentCategory
+].
+
+self method [
+globalContextClass
+    ^ globalContextClass
+].

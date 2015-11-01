@@ -1,0 +1,31 @@
+"Metaclass methods"
+self class: Metaclass.
+
+self category: 'accessing'.
+self method [
+thisClass
+    ^ thisClass
+].
+
+self method [
+traitComposition
+    ^ traitComposition
+].
+
+self method [
+traitComposition: anArray
+    traitComposition := anArray
+].
+
+self method [
+localSelectors
+    ^ localSelectors
+].
+
+"Class instantiation"
+self method [
+new
+    thisClass ifNotNil: [ self error: 'A meta class can only be instanced once '].
+    thisClass := self basicNew.
+    ^ thisClass
+]

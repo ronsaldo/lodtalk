@@ -1,0 +1,113 @@
+"Boolean"
+self class: Boolean.
+self category: 'controlling'.
+
+self method [
+and: alternativeBlock
+    self subclassResponsibility
+].
+
+self method [
+or: alternativeBlock
+    self subclassResponsibility
+].
+
+self method [
+ifTrue: alternativeBlock
+    self subclassResponsibility
+].
+
+self method [
+ifFalse: alternativeBlock
+    self subclassResponsibility
+].
+
+self method [
+ifTrue: trueBlock ifFalse: falseBlock
+    self subclassResponsibility
+].
+
+self method [
+ifFalse: falseBlock ifTrue: trueBlock
+    self subclassResponsibility
+].
+
+"True"
+self class: True.
+self category: 'controlling'.
+
+self method [
+and: alternativeBlock
+    ^ alternativeBlock value
+].
+
+self method [
+or: alternativeBlock
+    ^ self
+].
+
+self method [
+ifTrue: alternativeBlock
+    ^ alternativeBlock value
+].
+
+self method [
+ifFalse: alternativeBlock
+    ^ nil
+].
+
+self method [
+ifTrue: trueBlock ifFalse: falseBlock
+    ^ trueBlock value
+].
+
+self method [
+ifFalse: falseBlock ifTrue: trueBlock
+    ^ trueBlock value
+].
+
+self category: 'printing'.
+self method [
+printString
+    ^ 'true'
+].
+
+"False"
+self class: False.
+self category: 'controlling'.
+
+self method [
+and: alternativeBlock
+    ^ self
+].
+
+self method [
+or: alternativeBlock
+    ^ alternativeBlock value
+].
+
+self method [
+ifTrue: alternativeBlock
+    ^ nil
+].
+
+self method [
+ifFalse: alternativeBlock
+    ^ alternativeBlock value
+].
+
+self method [
+ifTrue: trueBlock ifFalse: falseBlock
+    ^ falseBlock value
+].
+
+self method [
+ifFalse: falseBlock ifTrue: trueBlock
+    ^ falseBlock value
+].
+
+self category: 'printing'.
+self method [
+printString
+    ^ 'false'
+].

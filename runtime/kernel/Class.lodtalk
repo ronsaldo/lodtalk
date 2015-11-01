@@ -1,0 +1,91 @@
+"Class methods"
+self class: Class.
+self category: 'accessing'.
+
+self method [
+name
+    ^ name
+].
+
+self category: 'construction'.
+
+self method [
+new
+    ^ self basicNew initialize
+].
+
+self method [
+new: arraySize
+    ^ (self basicNew: arraySize) initialize
+].
+
+self category: 'subclass creation'.
+self method [
+initWithSuperclass: theSuperclass format: theFormat name: myGivenName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionariesNames: poolDictionariesNameString category: myCategory
+    self initWithSuperclass: theSuperclass.
+    name := myGivenName.
+    format := theFormat.
+    instanceVariables := ivarNameString splitForVariableNames.
+
+    "Increase the fixed variable count"
+    fixedVariableCount := fixedVariableCount + instanceVariables size.
+    fixedVariableCount == 0 ifTrue: [
+        format == "OF_FIXED_SIZE" 1 ifTrue: [ format := "OF_EMPTY" 0].
+        format == "OF_VARIABLE_SIZE_IVARS" 3 ifTrue: [ format := "OF_VARIABLE_SIZE_NO_IVARS" 2].
+    ].
+].
+
+self method [
+subclass: subclassName format: subclassFormat instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionariesNameString category: categoryString
+    | subclassMetaclass subclass |
+    subclassMetaclass := Metaclass basicNew.
+    subclassMetaclass initWithSuperclass: self class;
+                    registerInClassTable.
+
+    subclass := subclassMetaclass new.
+    subclass initWithSuperclass: self format: subclassFormat name: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionariesNames: poolDictionariesNameString category: categoryString;
+             registerInClassTable.
+    Smalltalk at: subclassName put: subclass.
+    ^ subclass
+].
+
+self category: 'subclass creation'.
+self method [
+subclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+    ^ self subclass: subclassName format: "OF_FIXED_SIZE" 1 instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+].
+
+self method [
+subclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString category: categoryString
+    ^ self subclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: '' category: categoryString
+].
+
+self method [
+subclass: subclassName instanceVariableNames: ivarNameString category: categoryString
+    ^ self subclass: subclassName instanceVariableNames: ivarNameString classVariableNames: '' poolDictionaries: '' category: categoryString
+].
+
+self method [
+subclass: subclassName category: categoryString
+    ^ self subclass: subclassName instanceVariableNames: '' classVariableNames: '' poolDictionaries: '' category: categoryString
+].
+
+self method [
+variableSubclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+    ^ self subclass: subclassName format: "OF_VARIABLE_SIZE_IVARS" 3 instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+].
+
+self method [
+weakVariableSubclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+    ^ self subclass: subclassName format: "OF_WEAK_VARIABLE_SIZE" 4 instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+].
+
+self method [
+weakSubclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+    ^ self subclass: subclassName format: "OF_WEAK_VARIABLE_SIZE" 5 instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+].
+
+self method [
+byteVariableSubclass: subclassName instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+    ^ self subclass: subclassName format: "OF_INDEXABLE_8" 16 instanceVariableNames: ivarNameString classVariableNames: classVariableNameString poolDictionaries: poolDictionaryNameString category: categoryString
+].

@@ -1,0 +1,13 @@
+"ClassDescription methods"
+self class: ClassDescription.
+
+self category: 'accessing'.
+self method [
+instanceVariables
+    ^ instanceVariables
+].
+
+self method [
+organization
+    ^ organization
+].

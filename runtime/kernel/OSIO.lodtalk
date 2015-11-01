@@ -1,0 +1,12 @@
+"OSIO"
+self class: OSIO class.
+
+self method [
+print: anObject
+    self printString: anObject
+].
+
+self method [
+printString: aString
+    self write: aString offset: 0 size: aString size to: self stdout
+].

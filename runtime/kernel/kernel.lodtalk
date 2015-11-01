@@ -1,0 +1,15 @@
+self
+    executeFileNamed: 'Bootstrap.lodtalk';
+    executeFileNamed: 'Behavior.lodtalk';
+    executeFileNamed: 'ClassDescription.lodtalk';
+    executeFileNamed: 'Class.lodtalk';
+    executeFileNamed: 'Metaclass.lodtalk';
+    executeFileNamed: 'ProtoObject.lodtalk';
+    executeFileNamed: 'Object.lodtalk';
+    executeFileNamed: 'Boolean.lodtalk';
+    executeFileNamed: 'InstructionStream.lodtalk';
+    executeFileNamed: 'Context.lodtalk';
+    executeFileNamed: 'Number.lodtalk';
+    executeFileNamed: 'BlockClosure.lodtalk';
+    executeFileNamed: 'ScriptContext.lodtalk';
+    executeFileNamed: 'OSIO.lodtalk'.

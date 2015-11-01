@@ -1,0 +1,14 @@
+"String methods"
+self class: String.
+
+self category: 'converting'.
+self method [
+asString
+    ^ self
+].
+
+self category: 'printing'.
+self method [
+printString
+    ^ self
+].

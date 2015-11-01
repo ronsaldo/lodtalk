@@ -1,0 +1,13 @@
+"InstructionStream"
+self class: InstructionStream.
+self category: 'accessing'.
+
+self method [
+sender
+    ^ sender
+].
+
+self method [
+pc
+    ^ pc
+].

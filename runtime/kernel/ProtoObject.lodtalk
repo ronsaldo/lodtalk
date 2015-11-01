@@ -1,0 +1,8 @@
+"ProtoObject methods"
+self class: ProtoObject.
+self category: 'initialization'.
+
+self method [
+initialize
+    "Do nothing for now"
+].

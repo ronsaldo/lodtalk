@@ -1,0 +1,23 @@
+"Context"
+self class: Context.
+self category: 'accessing'.
+
+self method [
+stackp
+    ^ stackp
+].
+
+self method [
+method
+    ^ method
+].
+
+self method [
+closureOrNil
+    ^ closureOrNil
+].
+
+self method [
+receiver
+    ^ receiver
+].

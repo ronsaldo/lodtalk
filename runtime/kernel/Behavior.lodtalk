@@ -1,0 +1,48 @@
+"Behavior methods"
+self class: Behavior.
+
+self category: 'accessing'.
+
+self method [
+superclass
+    ^ superclass
+].
+
+self method [
+methodDict
+    ^ methodDict
+].
+
+self method [
+methodDict: aMethodDictionary
+    methodDict := aMethodDictionary
+].
+
+self method [
+format
+    ^ format
+].
+
+self method [
+fixedVariableCount
+    ^ fixedVariableCount
+].
+
+self method [
+layout
+    ^ layout
+].
+
+self method [
+>> selector
+    ^ methodDict atOrNil: selector
+].
+
+self category: 'initialization'.
+self method [
+initWithSuperclass: theSuperclass
+    superclass := theSuperclass.
+    format := theSuperclass format.
+    fixedVariableCount := theSuperclass fixedVariableCount.
+    methodDict := MethodDictionary new.
+]

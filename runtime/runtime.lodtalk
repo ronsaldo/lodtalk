@@ -1,0 +1,2 @@
+self executeFileNamed: 'kernel/kernel.lodtalk';
+    executeFileNamed: 'collections/collections.lodtalk'
