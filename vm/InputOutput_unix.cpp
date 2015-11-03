@@ -1,3 +1,4 @@
+#if defined(linux)
 #include <unistd.h>
 #include <stdio.h>
 #include "InputOutput.hpp"
@@ -6,17 +7,17 @@
 namespace Lodtalk
 {
 
-Oop OSIO::stdout(Oop clazz)
+Oop OSIO::stStdout(Oop clazz)
 {
 	return Oop::encodeSmallInteger(STDOUT_FILENO);
 }
 
-Oop OSIO::stdin(Oop clazz)
+Oop OSIO::stStdin(Oop clazz)
 {
 	return Oop::encodeSmallInteger(STDIN_FILENO);
 }
 
-Oop OSIO::stderr(Oop clazz)
+Oop OSIO::stStderr(Oop clazz)
 {
 	return Oop::encodeSmallInteger(STDERR_FILENO);
 }
@@ -43,9 +44,9 @@ Oop OSIO::writeOffsetSizeTo(Oop clazz, Oop bufferOop, Oop offsetOop, Oop sizeOop
 }
 
 LODTALK_BEGIN_CLASS_SIDE_TABLE(OSIO)
-	LODTALK_METHOD("stdout", OSIO::stdout)
-	LODTALK_METHOD("stdin", OSIO::stdin)
-	LODTALK_METHOD("stderr", OSIO::stderr)
+	LODTALK_METHOD("stdout", OSIO::stStdout)
+	LODTALK_METHOD("stdin", OSIO::stStdin)
+	LODTALK_METHOD("stderr", OSIO::stStderr)
 	LODTALK_METHOD("write:offset:size:to:", OSIO::writeOffsetSizeTo)
 LODTALK_END_CLASS_SIDE_TABLE()
 
@@ -55,3 +56,5 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(OSIO, Object, OF_EMPTY, 0);
 
 }
+
+#endif

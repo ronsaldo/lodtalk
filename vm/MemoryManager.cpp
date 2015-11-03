@@ -1,6 +1,9 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#undef min
+#undef max
 #else
 #include <unistd.h>
 #include <sys/mman.h>
@@ -97,7 +100,7 @@ struct AllocatedObject
 #ifdef _WIN32
 inline uint8_t *reserveVirtualAddressSpace(size_t size)
 {
-    return VirtualAlloc(nullptr, size, MEM_RESERVE, 0);
+    return (uint8_t*)VirtualAlloc(nullptr, size, MEM_RESERVE, 0);
 }
 
 inline bool allocateVirtualAddressRegion(uint8_t *addressSpace, size_t offset, size_t size)
@@ -404,7 +407,7 @@ void GarbageCollector::markObject(Oop objectPointer)
 		if(slotCount == 255)
 		{
 			auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-			slotCount = bigHeader->slotCount;
+			slotCount = (unsigned int)bigHeader->slotCount;
 			headerSize += 8;
 		}
 

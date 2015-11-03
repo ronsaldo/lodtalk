@@ -50,6 +50,11 @@ struct ObjectTag
 	static const uintptr_t Character = 2;
 	static const uintptr_t CharacterMask = 3;
 	static const uintptr_t CharacterShift = 2;
+
+    // Dummy constants
+    static const uintptr_t SmallFloat = 0;
+    static const uintptr_t SmallFloatMask = 0;
+    static const uintptr_t SmallFloatShift = 0
 #endif
 };
 
@@ -288,7 +293,7 @@ inline constexpr unsigned int generateIdentityHash(void *ptr)
 
 struct ObjectHeader
 {
-	uint8_t slotCount;
+    unsigned int slotCount : 8;
 	unsigned int isImmutable : 1;
 	unsigned int isPinned : 1;
 	unsigned int identityHash : 22;
@@ -348,7 +353,7 @@ private:
 public:
 	constexpr Oop() : pointer(reinterpret_cast<uint8_t*> (&NilObject)) {}
 
-	static constexpr Oop fromPointer(void *pointer)
+	static Oop fromPointer(void *pointer)
 	{
 		return Oop(reinterpret_cast<uint8_t*> (pointer));
 	}
@@ -439,7 +444,7 @@ public:
 	inline int decodeCharacter() const
 	{
 		assert(isCharacter());
-		return intValue >> ObjectTag::CharacterShift;
+		return int(intValue >> ObjectTag::CharacterShift);
 	}
 
 	static constexpr Oop encodeCharacter(int character)
@@ -656,10 +661,10 @@ inline int identityHashOf(Oop obj)
 {
 	if(obj.isSmallInteger())
 		return obj.decodeSmallInteger();
-	else if(obj.isCharacter())
-		return obj.decodeCharacter();
-	else if(obj.isSmallFloat())
-		return obj.decodeSmallFloat();
+    else if (obj.isCharacter())
+        return obj.decodeCharacter();
+    else if (obj.isSmallFloat())
+        return obj.uintValue >> ObjectTag::SmallFloatShift;
 	return obj.header->identityHash;
 }
 
@@ -720,9 +725,9 @@ public:
 		return oop.isNil();
 	}
 
-	OopRef &operator=(const Oop &oop)
+	OopRef &operator=(const Oop &newOop)
 	{
-		this->oop = oop;
+		this->oop = newOop;
 		return *this;
 	}
 
@@ -960,7 +965,8 @@ template<typename... Args>
 Oop sendMessageOopArgs(Oop receiver, Oop selector, Args... args)
 {
 	Oop argArray[] = {
-		args...
+		args...,
+        Oop()
 	};
 	return sendMessage(receiver, selector, sizeof...(args), argArray);
 }

@@ -6,20 +6,45 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 
 set(Lodtalk_SRC
      AST.cpp
+     AST.hpp
      BytecodeSets.cpp
+     BytecodeSets.hpp
      Collections.cpp
+     Collections.hpp
+     Common.hpp
      Compiler.cpp
+     Compiler.hpp
      Exception.cpp
+     Exception.hpp
      FileSystem.cpp
-     InputOutput.cpp
-     Method.cpp
-     MethodBuilder.cpp
+     FileSystem.hpp
+     InputOutput_unix.cpp
+     InputOutput_win32.cpp
+     InputOutput.hpp
      MemoryManager.cpp
+     MemoryManager.hpp
+     Method.cpp
+     Method.hpp
+     MethodBuilder.cpp
+     MethodBuilder.hpp
+     MPL.hpp
      Object.cpp
+     Object.hpp
      ObjectModel.cpp
+     ObjectModel.hpp
+     Parser.y
      ParserScannerInterface.cpp
+     ParserScannerInterface.hpp
+     PreprocessorHacks.hpp
+     RAII.hpp
+     Scanner.l
+     SistaV1BytecodeSet.inc
+     SpecialClasses.inc
      StackInterpreter.cpp
+     StackInterpreter.hpp
      StackMemory.cpp
+     StackMemory.hpp
+     Synchronization.hpp
      ${BISON_LodtalkParser_OUTPUTS}
      ${FLEX_LodtalkScanner_OUTPUTS}
 )

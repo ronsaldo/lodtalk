@@ -39,10 +39,6 @@ include(${CMAKE_ROOT}/Modules/CheckLibraryExists.cmake)
 find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
-# Find zlib
-find_package(ZLIB)
-set(Loden_DEP_LIBS ${ZLIB_LIBRARIES})
-
 # Set output dir.
 set(EXECUTABLE_OUTPUT_PATH "${Lodtalk_BINARY_DIR}/dist")
 set(LIBRARY_OUTPUT_PATH "${Lodtalk_BINARY_DIR}/dist")

@@ -1,9 +1,19 @@
 #ifndef LODTALK_COMMON_HPP
 #define LODTALK_COMMON_HPP
 
+#ifdef _WIN32
+#pragma warning(disable : 4200)
+#endif
+
+#if defined(__GNUC__)
 #define LODTALK_UNIMPLEMENTED() { \
 	fprintf(stderr, "The method %s is unimplemented in %s at line %d\n", __PRETTY_FUNCTION__, __FILE__, __LINE__); \
 	abort(); }
+#else
+#define LODTALK_UNIMPLEMENTED() { \
+	fprintf(stderr, "The method %s is unimplemented in %s at line %d\n", __func__, __FILE__, __LINE__); \
+	abort(); }
+#endif
 
 namespace Lodtalk
 {

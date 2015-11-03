@@ -3,6 +3,10 @@
 typedef void *yyscan_t;
 #endif
 
+#ifdef _WIN32
+#define YY_NO_UNISTD_H
+#endif 
+
 #include "ParserScannerInterface.hpp"
 #include "Parser.hpp"
 #define YYSTYPE LODTALK_STYPE

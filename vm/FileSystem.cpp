@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "FileSystem.hpp"
 
 namespace Lodtalk

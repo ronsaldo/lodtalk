@@ -344,6 +344,7 @@ private:
 	typename std::enable_if<MPL::size<RemainingTypes>::value == 0, R>::type
 	addArguments(Oop receiver, Oop *arguments, CurrentArgs... marshalledArguments)
 	{
+        (void)arguments;
 		auto self = nativeArgumentMarshaller<CT*> (receiver);
 		return (self->*function) (marshalledArguments...);
 	}

@@ -4,6 +4,16 @@
 %option noyywrap
 
 %{
+#ifdef _WIN32
+#define YY_NO_UNISTD_H
+
+inline bool isatty(int f)
+{
+    return false;
+}
+
+#endif 
+
 #include <string.h>
 #include <stdlib.h>
 #include "ParserScannerInterface.hpp"

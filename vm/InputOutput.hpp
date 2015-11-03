@@ -14,9 +14,9 @@ class OSIO: public Object
 {
 	LODTALK_NATIVE_CLASS();
 public:
-	static Oop stdout(Oop clazz);
-	static Oop stdin(Oop clazz);
-	static Oop stderr(Oop clazz);
+	static Oop stStdout(Oop clazz);
+	static Oop stStdin(Oop clazz);
+	static Oop stStderr(Oop clazz);
 	
 	static Oop writeOffsetSizeTo(Oop clazz, Oop buffer, Oop offset, Oop size, Oop file);
 };
