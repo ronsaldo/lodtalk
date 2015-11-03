@@ -35,7 +35,6 @@ set(Lodtalk_SRC
      Parser.y
      ParserScannerInterface.cpp
      ParserScannerInterface.hpp
-     PreprocessorHacks.hpp
      RAII.hpp
      Scanner.l
      SistaV1BytecodeSet.inc

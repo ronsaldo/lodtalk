@@ -1,4 +1,4 @@
-#if defined(linux)
+#if defined(__linux__)
 #include <unistd.h>
 #include <stdio.h>
 #include "InputOutput.hpp"

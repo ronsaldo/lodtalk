@@ -2,7 +2,6 @@
 #include <math.h>
 #include "StackMemory.hpp"
 #include "StackInterpreter.hpp"
-#include "PreprocessorHacks.hpp"
 #include "BytecodeSets.hpp"
 #include "Exception.hpp"
 #include "Common.hpp"
@@ -406,71 +405,64 @@ private:
     }
 
 	// Bytecode instructions
-	void interpretPushReceiverVariableShort()
+	void interpretPushReceiverVariableShort(int variableIndex)
 	{
 		fetchNextInstructionOpcode();
 
 		// Fetch the variable index.
-		auto variableIndex = currentOpcode & 0xF;
 		pushReceiverVariable(variableIndex);
 	}
 
-	void interpretPushLiteralVariableShort()
+	void interpretPushLiteralVariableShort(int literalVarIndex)
 	{
 		fetchNextInstructionOpcode();
 
 		// Fetch the literal index
-		auto literalVarIndex = currentOpcode & 0xF;
 		pushLiteralVariable(literalVarIndex);
 	}
 
-	void interpretPushLiteralShort()
+	void interpretPushLiteralShort(int literalIndex)
 	{
 		fetchNextInstructionOpcode();
 
 		// Fetch the literal index
-		auto literalIndex = currentOpcode & 0x1F;
 		pushLiteral(literalIndex);
 	}
 
-	void interpretPushTempShort()
+	void interpretPushTempShort(int tempIndex)
 	{
 		fetchNextInstructionOpcode();
 
 		// Fetch the temporal index
-		auto tempIndex = currentOpcode - BytecodeSet::PushTempShortFirst;
 		pushTemporary(tempIndex);
 	}
 
-	void interpretSendShortArgs0()
+	void interpretSendShortArgs0(int literalIndex)
 	{
 		// Fetch the literal index
-		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 0);
 	}
 
-	void interpretSendShortArgs1()
+	void interpretSendShortArgs1(int literalIndex)
 	{
 		// Fetch the literal index
-		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 1);
 	}
 
-	void interpretSendShortArgs2()
+	void interpretSendShortArgs2(int literalIndex)
 	{
 		// Fetch the literal index
-		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 2);
 	}
 
-	void interpretJumpShort()
+	void interpretJumpShort(int delta)
 	{
-		auto delta = (currentOpcode & 7) + 1;
+        ++delta;
 		pc += delta;
         fetchNextInstructionOpcode();
 	}
 
-	void interpretJumpOnTrueShort()
+	void interpretJumpOnTrueShort(int delta)
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
@@ -479,7 +471,6 @@ private:
 		// Perform the branch when requested.
 		if(condition == trueOop())
 		{
-			auto delta = (currentOpcode & 7);
 			pc += delta;
 			fetchNextInstructionOpcode();
 		}
@@ -491,7 +482,7 @@ private:
 		}
 	}
 
-	void interpretJumpOnFalseShort()
+	void interpretJumpOnFalseShort(int delta)
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
@@ -500,7 +491,6 @@ private:
 		// Perform the branch when requested.
 		if(condition == falseOop())
 		{
-			auto delta = (currentOpcode & 7);
 			pc += delta;
 			fetchNextInstructionOpcode();
 		}
@@ -512,17 +502,15 @@ private:
 		}
 	}
 
-	void interpretPopStoreReceiverVariableShort()
+	void interpretPopStoreReceiverVariableShort(int variableIndex)
 	{
         fetchNextInstructionOpcode();
-        auto variableIndex = currentOpcode & 7;
         setInstanceVariable(variableIndex, popOop());
 	}
 
-	void interpretPopStoreTemporalVariableShort()
+	void interpretPopStoreTemporalVariableShort(int temporalIndex)
 	{
         fetchNextInstructionOpcode();
-        auto temporalIndex = currentOpcode & 7;
 
         setTemporary(temporalIndex, popOop());
 	}
@@ -1779,22 +1767,9 @@ void StackInterpreter::interpret()
 
 		switch(currentOpcode)
 		{
-#define MAKE_RANGE_CASE(i, from, to, name) \
-case i + from:\
-	interpret ## name(); \
-	break;
-
-#define SISTAV1_INSTRUCTION_RANGE(name, rangeFirst, rangeLast) \
-	LODTALK_EVAL(LODTALK_FROM_TO_INCLUSIVE(rangeFirst, rangeLast, MAKE_RANGE_CASE, name))
-
-#define SISTAV1_INSTRUCTION(name, opcode) \
-case opcode:\
-	interpret ## name(); \
-	break;
-#include "SistaV1BytecodeSet.inc"
-#undef SISTAV1_INSTRUCTION_RANGE
-#undef SISTAV1_INSTRUCTION
-#undef MAKE_RANGE_CASE
+#define BYTECODE_DISPATCH_NAME(name) interpret ## name
+#include "BytecodeSetDispatchTable.inc"
+#undef BYTECODE_DISPATCH_NAME
 
 		default:
 			errorFormat("unsupported bytecode %d", currentOpcode);
