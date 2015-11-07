@@ -3,6 +3,7 @@ FLEX_TARGET(LodtalkScanner Scanner.l ${CMAKE_CURRENT_BINARY_DIR}/Scanner.cpp COM
 ADD_FLEX_BISON_DEPENDENCY(LodtalkScanner LodtalkParser)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
+add_definitions(-DBUILDING_LODTALK_VM)
 
 set(Lodtalk_SRC
      AST.cpp
@@ -36,7 +37,6 @@ set(Lodtalk_SRC
      RAII.hpp
      Scanner.l
      SistaV1BytecodeSet.inc
-     SpecialClasses.inc
      StackInterpreter.cpp
      StackInterpreter.hpp
      StackMemory.cpp
