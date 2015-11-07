@@ -6,8 +6,9 @@
 #include <utility>
 #include <mutex>
 
+#include "Lodtalk/ObjectModel.hpp"
+#include "Constants.hpp"
 #include "StackMemory.hpp"
-#include "ObjectModel.hpp"
 #include "Synchronization.hpp"
 
 namespace Lodtalk

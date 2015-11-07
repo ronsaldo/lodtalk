@@ -4,7 +4,7 @@
 #include "StackInterpreter.hpp"
 #include "BytecodeSets.hpp"
 #include "Exception.hpp"
-#include "Common.hpp"
+#include "Constants.hpp"
 
 namespace Lodtalk
 {

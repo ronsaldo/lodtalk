@@ -69,22 +69,37 @@ public:
 		return *reinterpret_cast<CompiledMethod**> (framePointer + InterpreterStackFrame::MethodOffset);
 	}
 
-	inline Oop getReceiver()
+    inline Oop &receiver()
 	{
 		return *reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ReceiverOffset);
 	}
 
-	inline Oop getThisContext()
+	inline Oop &thisContext()
 	{
 		return *reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset);
 	}
 
+	inline const Oop &getReceiver()
+	{
+		return receiver();
+	}
+
+	inline const Oop &getThisContext()
+	{
+		return thisContext();
+	}
+
     inline void setThisContext(Oop newContext)
     {
-        *reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset) = newContext;
+        thisContext() = newContext;
     }
 
-    inline Oop getArgumentAtReverseIndex(size_t index)
+    inline Oop &argumentAtReverseIndex(size_t index)
+    {
+        return reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset)[index];
+    }
+
+    inline const Oop &getArgumentAtReverseIndex(size_t index)
     {
         return reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset)[index];
     }
@@ -104,12 +119,12 @@ public:
 		return StackFrame(getPrevFramePointer(), framePointer + InterpreterStackFrame::LastArgumentOffset);
 	}
 
-	inline Oop stackOopAtOffset(size_t offset)
+	inline Oop &stackOopAtOffset(size_t offset)
 	{
 		return *reinterpret_cast<Oop*> (stackPointer + offset);
 	}
 
-	inline Oop stackTop()
+	inline Oop &stackTop()
 	{
 		return *reinterpret_cast<Oop*> (stackPointer);
 	}

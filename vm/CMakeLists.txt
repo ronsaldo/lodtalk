@@ -11,7 +11,6 @@ set(Lodtalk_SRC
      BytecodeSets.hpp
      Collections.cpp
      Collections.hpp
-     Common.hpp
      Compiler.cpp
      Compiler.hpp
      Exception.cpp
@@ -31,7 +30,6 @@ set(Lodtalk_SRC
      Object.cpp
      Object.hpp
      ObjectModel.cpp
-     ObjectModel.hpp
      Parser.y
      ParserScannerInterface.cpp
      ParserScannerInterface.hpp
@@ -44,11 +42,9 @@ set(Lodtalk_SRC
      StackMemory.cpp
      StackMemory.hpp
      Synchronization.hpp
+     VMContext.cpp
      ${BISON_LodtalkParser_OUTPUTS}
      ${FLEX_LodtalkScanner_OUTPUTS}
 )
 
 add_library(Lodtalk SHARED ${Lodtalk_SRC})
-
-add_executable(LodtalkRunner Runner.cpp)
-target_link_libraries(LodtalkRunner Lodtalk)

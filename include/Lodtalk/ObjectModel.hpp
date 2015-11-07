@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string>
-#include "Common.hpp"
+#include "Lodtalk/Definitions.h"
 
 #if UINTPTR_MAX > UINT32_MAX
 #define OBJECT_MODEL_SPUR_64 1
@@ -16,6 +16,7 @@
 
 namespace Lodtalk
 {
+class VMContext;
 
 // Object constants
 struct ObjectTag
@@ -650,7 +651,7 @@ enum SpecialClassesIndex
 #define SPECIAL_CLASS_NAME(className) \
 	SCI_ ## className, \
 	SMCI_ ## className,
-#include "SpecialClasses.inc"
+#include "Lodtalk/SpecialClasses.inc"
 #undef SPECIAL_CLASS_NAME
 };
 
@@ -699,7 +700,6 @@ public:
 	{
 		registerSelf();
 	}
-
 
 	OopRef(const Oop &object)
 		: oop(object)

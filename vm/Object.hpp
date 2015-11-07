@@ -2,7 +2,7 @@
 #define LODTALK_OBJECT_HPP
 
 #include <stdio.h>
-#include "ObjectModel.hpp"
+#include "Lodtalk/ObjectModel.hpp"
 
 namespace Lodtalk
 {

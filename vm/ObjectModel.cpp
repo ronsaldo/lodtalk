@@ -1,7 +1,6 @@
 #include <list>
 #include <string.h>
-#include "Common.hpp"
-#include "ObjectModel.hpp"
+#include "Lodtalk/ObjectModel.hpp"
 #include "Object.hpp"
 #include "Collections.hpp"
 #include "Method.hpp"
@@ -152,7 +151,7 @@ void SpecialRuntimeObjects::createSpecialClassTable()
 #define SPECIAL_CLASS_NAME(className) \
 	specialClassTable.push_back(className::ClassObject); \
 	specialClassTable.push_back(className::MetaclassObject);
-#include "SpecialClasses.inc"
+#include "Lodtalk/SpecialClasses.inc"
 #undef SPECIAL_CLASS_NAME
 
     // Register the special classes in the class table.
