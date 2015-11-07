@@ -1,10 +1,10 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include "Exception.hpp"
+#include "Lodtalk/Exception.hpp"
 
 namespace Lodtalk
 {
-    
+
 void nativeErrorFormat(const char *format, ...)
 {
     char buffer[1024];
@@ -12,7 +12,7 @@ void nativeErrorFormat(const char *format, ...)
     va_start(args, format);
     vsnprintf(buffer, 1024, format, args);
 	va_end(args);
-	
+
 	nativeError(format);
 }
 

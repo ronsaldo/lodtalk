@@ -9,7 +9,7 @@
 #include "Lodtalk/ObjectModel.hpp"
 #include "Constants.hpp"
 #include "StackMemory.hpp"
-#include "Synchronization.hpp"
+#include "Lodtalk/Synchronization.hpp"
 
 namespace Lodtalk
 {

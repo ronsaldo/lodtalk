@@ -3,7 +3,7 @@
 #include "StackMemory.hpp"
 #include "StackInterpreter.hpp"
 #include "BytecodeSets.hpp"
-#include "Exception.hpp"
+#include "Lodtalk/Exception.hpp"
 #include "Constants.hpp"
 
 namespace Lodtalk

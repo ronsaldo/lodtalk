@@ -2,7 +2,7 @@
 #include "Object.hpp"
 #include "Collections.hpp"
 #include "Method.hpp"
-#include "Exception.hpp"
+#include "Lodtalk/Exception.hpp"
 
 namespace Lodtalk
 {

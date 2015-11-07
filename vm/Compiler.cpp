@@ -1,11 +1,11 @@
 #include <map>
 #include <stdio.h>
 #include <stdarg.h>
+#include "Lodtalk/Exception.hpp"
 #include "Compiler.hpp"
 #include "Method.hpp"
 #include "MethodBuilder.hpp"
 #include "ParserScannerInterface.hpp"
-#include "Exception.hpp"
 #include "FileSystem.hpp"
 #include "RAII.hpp"
 
