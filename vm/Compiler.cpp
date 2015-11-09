@@ -517,12 +517,10 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 	{
 		auto message = i < 0 ? node : chained[i];
         // Duplicate the receiver for the next chains
+        if(i != -1)
+            interpreter->popOop();
         if(i + 1 != (int)chained.size())
-        {
-            if(i != -1)
-                interpreter->popOop();
             interpreter->duplicateStackTop();
-        }
 
 		// Evaluate the arguments.
 		auto &arguments = message->getArguments();
@@ -1703,7 +1701,11 @@ int ScriptContext::stExecuteFileNamed(InterpreterProxy *interpreter)
 		basePathString = context->getByteStringData(self->basePath);
 	std::string fileNameString = context->getByteStringData(fileNameOop);
 	std::string fullFileName = joinPath(basePathString, fileNameString);
-	return executeScriptFromFileNamed(interpreter, fullFileName);
+    interpreter->pushOop(Oop());
+	auto res = executeScriptFromFileNamed(interpreter, fullFileName);
+    if(res != 0)
+        return res;
+    return interpreter->returnTop();
 }
 
 int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
@@ -1738,7 +1740,7 @@ int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
 
 	// Compile the method
 	Ref<CompiledMethod> compiledMethod(context, compileMethod(context, instanceVarScope, clazz, ast));
-    
+
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();
 	clazz->methodDict->atPut(context, selector, compiledMethod.getOop());
