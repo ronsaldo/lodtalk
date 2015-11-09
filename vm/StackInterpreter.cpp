@@ -43,6 +43,7 @@ public:
     // Returning
     virtual int returnTop() override;
     virtual int returnReceiver() override;
+    virtual int returnSmallInteger(SmallIntegerValue value) override;
 
     // Temporaries
     virtual size_t getArgumentCount() override;
@@ -1904,27 +1905,6 @@ void StackInterpreter::interpret()
 	}
 }
 
-/*Oop interpretCompiledMethod(VMContext *context, CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments)
-{
-	Oop result;
-	withStackMemory([&](StackMemory *stack) {
-		StackInterpreter interpreter(stack);
-		result = interpreter.interpretMethod(method, receiver, argumentCount, arguments);
-	});
-	return result;
-}
-
-Oop interpretBlockClosure(VMContext *context, BlockClosure *closure, int argumentCount, Oop *arguments)
-{
-	Oop result;
-	withStackMemory([&](StackMemory *stack) {
-		StackInterpreter interpreter(stack);
-		result = interpreter.interpretBlockClosure(closure, argumentCount, arguments);
-	});
-	return result;
-}
-*/
-
 /**
  * Stack interpreter proxy
  */
@@ -2003,6 +1983,12 @@ int StackInterpreterProxy::returnTop()
 int StackInterpreterProxy::returnReceiver()
 {
     interpreter->returnReceiver();
+    return 0;
+}
+
+int StackInterpreterProxy::returnSmallInteger(SmallIntegerValue value)
+{
+    interpreter->returnValue(Oop::encodeSmallInteger(value));
     return 0;
 }
 

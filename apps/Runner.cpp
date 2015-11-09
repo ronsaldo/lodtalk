@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "Lodtalk/VMContext.hpp"
+#include "Lodtalk/InterpreterProxy.hpp"
 
 using namespace Lodtalk;
 VMContext *context = nullptr;
@@ -58,7 +59,10 @@ int main(int argc, const char *argv[])
     }
 
     // Call the main function.
-    //auto globalContext = getGlobalContext();
-    //sendMessageOopArgs(globalContext, makeSelector("main"));
+    context->withInterpreter([&](InterpreterProxy *interpreter) {
+        interpreter->pushOop(context->getGlobalContext());
+        interpreter->sendMessageWithSelector(context->makeSelector("main"), 0);
+        interpreter->popOop();
+    });
     return 0;
 }

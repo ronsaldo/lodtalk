@@ -254,7 +254,7 @@ class GlobalEvaluationScope: public EvaluationScope
 {
 public:
 	GlobalEvaluationScope(VMContext *context)
-		: EvaluationScope(EvaluationScopePtr()) {}
+		: EvaluationScope(EvaluationScopePtr()), context(context) {}
 
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
 
@@ -1637,7 +1637,7 @@ int executeScriptFromFile(InterpreterProxy *interpreter, FILE *file, const std::
 	if(context.isNil())
 		return interpreter->primitiveFailed();
 
-	context->globalContextClass = vmContext->getGlobalContext();
+	context->globalContextClass = vmContext->getClassFromOop(vmContext->getGlobalContext());
 	context->basePath = vmContext->makeByteString(basePath);
 
 	// Parse the script.
@@ -1738,7 +1738,8 @@ int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
 
 	// Compile the method
 	Ref<CompiledMethod> compiledMethod(context, compileMethod(context, instanceVarScope, clazz, ast));
-
+    compiledMethod->dump();
+    
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();
 	clazz->methodDict->atPut(context, selector, compiledMethod.getOop());
