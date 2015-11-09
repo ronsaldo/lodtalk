@@ -11,7 +11,7 @@ namespace Lodtalk
 /**
  * Collection
  */
-class Collection: public Object
+class LODTALK_VM_EXPORT Collection: public Object
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -21,7 +21,7 @@ public:
 /**
  * SequenceableCollection
  */
-class SequenceableCollection: public Collection
+class LODTALK_VM_EXPORT SequenceableCollection: public Collection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -31,7 +31,7 @@ public:
 /**
  * ArrayedCollection
  */
-class ArrayedCollection: public SequenceableCollection
+class LODTALK_VM_EXPORT ArrayedCollection: public SequenceableCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -41,7 +41,7 @@ public:
 /**
  * Array
  */
-class Array: public ArrayedCollection
+class LODTALK_VM_EXPORT Array: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -52,7 +52,7 @@ public:
 /**
  * ByteArray
  */
-class ByteArray: public ArrayedCollection
+class LODTALK_VM_EXPORT ByteArray: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -62,7 +62,7 @@ public:
 /**
  * FloatArray
  */
-class FloatArray: public ArrayedCollection
+class LODTALK_VM_EXPORT FloatArray: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -72,7 +72,7 @@ public:
 /**
  * WordArray
  */
-class WordArray: public ArrayedCollection
+class LODTALK_VM_EXPORT WordArray: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -82,7 +82,7 @@ public:
 /**
  * IntegerArray
  */
-class IntegerArray: public ArrayedCollection
+class LODTALK_VM_EXPORT IntegerArray: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -92,7 +92,7 @@ public:
 /**
  * String
  */
-class String: public ArrayedCollection
+class LODTALK_VM_EXPORT String: public ArrayedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -102,7 +102,7 @@ public:
 /**
  * ByteString
  */
-class ByteString: public String
+class LODTALK_VM_EXPORT ByteString: public String
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -123,7 +123,7 @@ public:
 /**
  * WideString
  */
-class WideString: public String
+class LODTALK_VM_EXPORT WideString: public String
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -132,7 +132,7 @@ public:
 /**
  * Symbol
  */
-class Symbol: public String
+class LODTALK_VM_EXPORT Symbol: public String
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -141,7 +141,7 @@ public:
 /**
  * ByteSymbol
  */
-class ByteSymbol: public Symbol
+class LODTALK_VM_EXPORT ByteSymbol: public Symbol
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -157,7 +157,7 @@ public:
 /**
  * WideSymbol
  */
-class WideSymbol: public Symbol
+class LODTALK_VM_EXPORT WideSymbol: public Symbol
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -166,7 +166,7 @@ public:
 /**
  * HashedCollection
  */
-class HashedCollection: public Collection
+class LODTALK_VM_EXPORT HashedCollection: public Collection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -332,7 +332,7 @@ protected:
 /**
  * Dictionary
  */
-class Dictionary: public HashedCollection
+class LODTALK_VM_EXPORT Dictionary: public HashedCollection
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -341,7 +341,7 @@ public:
 /**
  * MethodDictionary
  */
-class MethodDictionary: public Dictionary
+class LODTALK_VM_EXPORT MethodDictionary: public Dictionary
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -474,7 +474,7 @@ protected:
 /**
  * IdentityDictionary
  */
-class IdentityDictionary: public Dictionary
+class LODTALK_VM_EXPORT IdentityDictionary: public Dictionary
 {
 public:
     static SpecialNativeClassFactory Factory;
@@ -509,7 +509,7 @@ public:
 /**
  * SystemDictionary
  */
-class SystemDictionary: public IdentityDictionary
+class LODTALK_VM_EXPORT SystemDictionary: public IdentityDictionary
 {
 public:
     static SpecialNativeClassFactory Factory;

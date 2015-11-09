@@ -1,2 +1,2 @@
-add_executable(LodtalkRunner Runner.cpp)
-target_link_libraries(LodtalkRunner Lodtalk)
+add_executable(Lodtalk Lodtalk.cpp)
+target_link_libraries(Lodtalk LodtalkVM)

@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include "Lodtalk/Definitions.h"
 #include "Lodtalk/ObjectModel.hpp"
 #include "Lodtalk/Object.hpp"
 

@@ -701,7 +701,7 @@ X identityFunction(const X &x)
 }
 
 // Oop reference that can be updated by the GC.
-class OopRef
+class LODTALK_VM_EXPORT OopRef
 {
 public:
 	OopRef()

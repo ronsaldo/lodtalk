@@ -5,7 +5,7 @@ ADD_FLEX_BISON_DEPENDENCY(LodtalkScanner LodtalkParser)
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 add_definitions(-DBUILDING_LODTALK_VM)
 
-set(Lodtalk_SRC
+set(LodtalkVM_SRC
      AST.cpp
      AST.hpp
      BytecodeSets.cpp
@@ -47,4 +47,4 @@ set(Lodtalk_SRC
      ${FLEX_LodtalkScanner_OUTPUTS}
 )
 
-add_library(Lodtalk SHARED ${Lodtalk_SRC})
+add_library(LodtalkVM SHARED ${LodtalkVM_SRC})
