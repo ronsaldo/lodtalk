@@ -69,23 +69,9 @@ public:
         return *this;
     }
 
-    ClassBuilder &addClassMethod(const char *name, PrimitiveFunction primitive)
-    {
-        classSidePrimitiveMethods[name] = primitive;
-        return *this;
-    }
-
-    ClassBuilder &addMethod(const char *name, PrimitiveFunction primitive)
-    {
-        primitiveMethods[name] = primitive;
-        return *this;
-    }
-
-    ClassBuilder &addInstanceVariable(const char *name)
-    {
-        instanceVariableNames.push_back(name);
-        return *this;
-    }
+    ClassBuilder &addClassMethod(const char *name, PrimitiveFunction primitive);
+    ClassBuilder &addMethod(const char *name, PrimitiveFunction primitive);
+    ClassBuilder &addInstanceVariable(const char *name);
 
     template<typename... Args>
     ClassBuilder &addInstanceVariables(const char *name, Args... args)

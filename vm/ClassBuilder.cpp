@@ -90,4 +90,22 @@ void ClassBuilder::createMetaclassMethodDict()
     }
 }
 
+ClassBuilder &ClassBuilder::addClassMethod(const char *name, PrimitiveFunction primitive)
+{
+    classSidePrimitiveMethods[name] = primitive;
+    return *this;
+}
+
+ClassBuilder &ClassBuilder::addMethod(const char *name, PrimitiveFunction primitive)
+{
+    primitiveMethods[name] = primitive;
+    return *this;
+}
+
+ClassBuilder &ClassBuilder::addInstanceVariable(const char *name)
+{
+    instanceVariableNames.push_back(name);
+    return *this;
+}
+
 } // End of namespace Lodtalk
