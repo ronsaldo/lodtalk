@@ -4,9 +4,8 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "Object.hpp"
-#include "Collections.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 
 namespace Lodtalk
 {
@@ -332,7 +331,7 @@ public:
 
     void addInlineArgument(const TemporalVariableLookupPtr &variable);
     const InlineArguments &getInlineArguments() const;
-    
+
 private:
 	ArgumentList *argumentList;
 	SequenceNode *body;
@@ -370,7 +369,7 @@ class MethodAST: public FunctionalNode
 {
 public:
 
-	MethodAST(MethodHeader *header, Node *pragmas, SequenceNode *body);
+	MethodAST(VMContext *context, MethodHeader *header, Node *pragmas, SequenceNode *body);
 	~MethodAST();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
@@ -383,6 +382,7 @@ public:
 	const Ref<MethodASTHandle> &getHandle();
 
 private:
+    VMContext *context;
 	MethodHeader *header;
 	SequenceNode *body;
 	Ref<MethodASTHandle> astHandle;

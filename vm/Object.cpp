@@ -1,6 +1,7 @@
 #include <string.h>
-#include "Object.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/VMContext.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 #include "Method.hpp"
 #include "Lodtalk/Exception.hpp"
 
@@ -13,26 +14,25 @@ True TrueObject;
 False FalseObject;
 
 // Proto object methods
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ProtoObject)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ProtoObject)
-LODTALK_END_CLASS_TABLE()
+SpecialNativeClassFactory ProtoObject::Factory("ProtoObject", SCI_ProtoObject, nullptr, [](ClassBuilder &builder) {
+});
 
 // Proto object method dictionary.
+/*
 static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_metaclass_methodDictBuilder, 0, "", ProtoObject::ClassObject);
 ClassDescription *ProtoObject::MetaclassObject = &ProtoObject_metaclass;
 
 static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDictBuilder, OF_EMPTY, 0, "");
 ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
+*/
 
 // Object methods
-Oop Object::stClass(Oop self)
+/*Oop Object::stClass(Oop self)
 {
 	return getClassFromOop(self);
-}
+}*/
 
-Oop Object::stSize(Oop self)
+/*Oop Object::stSize(Oop self)
 {
 	if(!self.isPointer())
 	{
@@ -50,7 +50,9 @@ Oop Object::stSize(Oop self)
 
 	return Oop::encodeSmallInteger(self.getNumberOfElements());
 }
+*/
 
+/*
 Oop Object::stAt(Oop self, Oop indexOop)
 {
 	auto size = stSize(self).decodeSmallInteger();
@@ -99,8 +101,9 @@ Oop Object::stAt(Oop self, Oop indexOop)
 	nativeError("unimplemented");
 	return Oop();
 }
+*/
 
-Oop Object::stAtPut(Oop self, Oop indexOop, Oop value)
+/*Oop Object::stAtPut(Oop self, Oop indexOop, Oop value)
 {
 	auto size = stSize(self).decodeSmallInteger();
 	auto index = indexOop.decodeSmallInteger() - 1;
@@ -157,50 +160,44 @@ Oop Object::stAtPut(Oop self, Oop indexOop, Oop value)
 	nativeError("unimplemented");
 	return Oop();
 }
+*/
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Object)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Object)
-	LODTALK_METHOD("class", Object::stClass)
+// Object
+SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
+    /*
+    LODTALK_METHOD("class", Object::stClass)
 	LODTALK_METHOD("size", Object::stSize)
 	LODTALK_METHOD("at:", Object::stAt)
 	LODTALK_METHOD("at:put:", Object::stAtPut)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Object, ProtoObject, OF_EMPTY, 0);
+    */
+});
 
 // Undefined object
-LODTALK_BEGIN_CLASS_SIDE_TABLE(UndefinedObject)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(UndefinedObject)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(UndefinedObject, Object, OF_EMPTY, 0);
+SpecialNativeClassFactory UndefinedObject::Factory("UndefinedObject", SCI_UndefinedObject, &Object::Factory, [](ClassBuilder &builder) {
+});
 
 // Behavior
-Oop Behavior::basicNew()
+Oop Behavior::basicNew(VMContext *context)
 {
-	return Oop::fromPointer(basicNativeNew());
+	return Oop::fromPointer(basicNativeNew(context));
 }
 
-Oop Behavior::basicNew(Oop indexableSize)
+Oop Behavior::basicNew(VMContext *context, Oop indexableSize)
 {
-	return Oop::fromPointer(basicNativeNew(indexableSize.decodeSmallInteger()));
+	return Oop::fromPointer(basicNativeNew(context, indexableSize.decodeSmallInteger()));
 }
 
-Object *Behavior::basicNativeNew(size_t indexableSize)
+Object *Behavior::basicNativeNew(VMContext *context, size_t indexableSize)
 {
 	auto theFormat = (ObjectFormat)format.decodeSmallInteger();
 	auto fixedSlotCount = fixedVariableCount.decodeSmallInteger();
 	auto classIndex = object_header_.identityHash;
-	return reinterpret_cast<Object*> (newObject(fixedSlotCount, indexableSize, theFormat, classIndex));
+	return reinterpret_cast<Object*> (context->newObject(fixedSlotCount, indexableSize, theFormat, classIndex));
 }
 
-Object *Behavior::basicNativeNew()
+Object *Behavior::basicNativeNew(VMContext *context)
 {
-	return basicNativeNew(0);
+	return basicNativeNew(context, 0);
 }
 
 Oop Behavior::superLookupSelector(Oop selector)
@@ -228,65 +225,61 @@ Oop Behavior::lookupSelector(Oop selector)
 	return superclass->lookupSelector(selector);
 }
 
-Oop Behavior::getBinding()
+Oop Behavior::getBinding(VMContext *context)
 {
 	// Dispatch manually the message.
 	auto classIndex = classIndexOf(selfOop());
 	// Am I a metaclass?
 	if(classIndex == SCI_Metaclass)
-		return static_cast<Metaclass*> (this)->getBinding();
+		return static_cast<Metaclass*> (this)->getBinding(context);
 
 	// Am I a class?
-	auto myClass = getClassFromIndex(classIndex);
+	auto myClass = context->getClassFromIndex(classIndex);
 	if(classIndexOf(myClass) == SCI_Metaclass)
-		return static_cast<Class*> (this)->getBinding();
+		return static_cast<Class*> (this)->getBinding(context);
 
 	// I need to send an actual message
 	LODTALK_UNIMPLEMENTED();
 }
 
-Oop Behavior::registerInClassTable()
+Oop Behavior::registerInClassTable(VMContext *context)
 {
     assert(selfOop().isPointer());
-    registerClassInTable(selfOop());
+    context->registerClassInTable(selfOop());
     return selfOop();
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Behavior)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Behavior)
-	LODTALK_METHOD("basicNew", static_cast<Oop (Behavior::*)()> (&Behavior::basicNew))
+SpecialNativeClassFactory Behavior::Factory("Behavior", SCI_Behavior, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("superclass", "methodDict", "format", "fixedVariableCount", "layout");
+    /*
+    LODTALK_METHOD("basicNew", static_cast<Oop (Behavior::*)()> (&Behavior::basicNew))
 	LODTALK_METHOD("basicNew:", static_cast<Oop (Behavior::*)(Oop)> (&Behavior::basicNew))
     LODTALK_METHOD("registerInClassTable", &Behavior::registerInClassTable)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Behavior, Object, OF_FIXED_SIZE, Behavior::BehaviorVariableCount, "superclass methodDict format fixedVariableCount layout");
+    */
+});
 
 // ClassDescription
-Oop ClassDescription::splitVariableNames(const char *instanceVariableNames)
-{
-	return ByteString::splitVariableNames(instanceVariableNames);
-}
-
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassDescription)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ClassDescription)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ClassDescription, Behavior, OF_FIXED_SIZE, ClassDescription::ClassDescriptionVariableCount, "instanceVariables organization");
+SpecialNativeClassFactory ClassDescription::Factory("ClassDescription", SCI_ClassDescription, &Behavior::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("instanceVariables", "organization");
+});
 
 // Class
-Oop Class::getBinding()
+Class *Class::basicNativeNewClass(VMContext *context, unsigned int classIndex)
+{
+    return reinterpret_cast<Class*> (context->newObject(ClassVariableCount, 0, OF_FIXED_SIZE, classIndex));
+}
+
+Oop Class::getBinding(VMContext *context)
 {
 	// Find myself in the global dictionary
-	auto result = getGlobalFromSymbol(name);
+	auto result = context->getGlobalFromSymbol(name);
 	if(!isNil(result))
 		return result;
 
 	// TODO: Find an existing
-	return Oop::fromPointer(Association::make(nilOop(), selfOop()));
+	return Oop::fromPointer(Association::make(context, nilOop(), selfOop()));
 }
 
 std::string Class::getNameString()
@@ -300,89 +293,58 @@ std::string Class::getNameString()
 	return nameSymbol->getString();
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Class)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory Class::Factory("Class", SCI_Class, &ClassDescription::Factory, [](ClassBuilder &builder) {
+    //LODTALK_METHOD("binding", &Class::getBinding)
 
-LODTALK_BEGIN_CLASS_TABLE(Class)
-	LODTALK_METHOD("binding", &Class::getBinding)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Class, ClassDescription, OF_FIXED_SIZE, Class::ClassVariableCount,
-"subclasses name classPool sharedPools category environment traitComposition localSelectors");
+    builder
+        .addInstanceVariables("subclasses", "name", "classPool", "sharedPools", "category", "environment", "traitComposition", "localSelectors");
+});
 
 // Metaclass
-Oop Metaclass::getBinding()
+Metaclass *Metaclass::basicNativeNewMetaclass(VMContext *context)
 {
-	// TODO: Find an existing
-	return Oop::fromPointer(Association::make(nilOop(), selfOop()));
+    return reinterpret_cast<Metaclass*> (context->newObject(MetaclassVariableCount, 0, OF_FIXED_SIZE, SCI_Metaclass));
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Metaclass)
-LODTALK_END_CLASS_SIDE_TABLE()
+Oop Metaclass::getBinding(VMContext *context)
+{
+	// TODO: Find an existing
+	return Oop::fromPointer(Association::make(context, nilOop(), selfOop()));
+}
 
-LODTALK_BEGIN_CLASS_TABLE(Metaclass)
-	LODTALK_METHOD("binding", &Metaclass::getBinding)
-LODTALK_END_CLASS_TABLE()
+SpecialNativeClassFactory Metaclass::Factory("Metaclass", SCI_Metaclass, &ClassDescription::Factory, [](ClassBuilder &builder) {
+    //LODTALK_METHOD("binding", &Metaclass::getBinding)
 
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Metaclass, ClassDescription, OF_FIXED_SIZE, Metaclass::MetaclassVariableCount,
-"thisClass traitComposition localSelectors");
+    builder
+        .addInstanceVariables("thisClass", "traitComposition", "localSelectors");
+});
 
 // Boolean
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Boolean)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Boolean)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Boolean, Object, OF_EMPTY, 0);
+SpecialNativeClassFactory Boolean::Factory("Boolean", SCI_Boolean, &Object::Factory, [](ClassBuilder &builder) {
+});
 
 // True
-LODTALK_BEGIN_CLASS_SIDE_TABLE(True)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(True)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(True, Boolean, OF_EMPTY, 0);
+SpecialNativeClassFactory True::Factory("True", SCI_True, &Boolean::Factory, [](ClassBuilder &builder) {
+});
 
 // False
-LODTALK_BEGIN_CLASS_SIDE_TABLE(False)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(False)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(False, Boolean, OF_EMPTY, 0);
+SpecialNativeClassFactory False::Factory("False", SCI_False, &Boolean::Factory, [](ClassBuilder &builder) {
+});
 
 // Magnitude
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Magnitude)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Magnitude)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Magnitude, Object, OF_EMPTY, 0);
+SpecialNativeClassFactory Magnitude::Factory("Magnitude", SCI_Magnitude, &Object::Factory, [](ClassBuilder &builder) {
+});
 
 // Number
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Number)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Number)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Number, Magnitude, OF_EMPTY, 0);
+SpecialNativeClassFactory Number::Factory("Number", SCI_Number, &Magnitude::Factory, [](ClassBuilder &builder) {
+});
 
 // Integer
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Integer)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Integer)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Integer, Number, OF_EMPTY, 0);
+SpecialNativeClassFactory Integer::Factory("Integer", SCI_Integer, &Number::Factory, [](ClassBuilder &builder) {
+});
 
 // SmallInteger
-static Oop SmallInteger_printString(Oop self)
+/*static Oop SmallInteger_printString(Oop self)
 {
     if(!self.isSmallInteger())
         nativeError("expected a small integer.");
@@ -409,119 +371,71 @@ static Oop SmallInteger_printString(Oop self)
 
     return Oop::fromPointer(ByteString::fromNativeReverseRange(buffer, dest));
 }
+*/
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(SmallInteger)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(SmallInteger)
-    LODTALK_METHOD("printString", SmallInteger_printString)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(SmallInteger, Integer, OF_EMPTY, 0);
+SpecialNativeClassFactory SmallInteger::Factory("SmallInteger", SCI_SmallInteger, &Integer::Factory, [](ClassBuilder &builder) {
+    //LODTALK_METHOD("printString", SmallInteger_printString)
+});
 
 // Float
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Float)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Float)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Float, Number, OF_EMPTY, 0);
+SpecialNativeClassFactory Float::Factory("Float", SCI_Float, &Number::Factory, [](ClassBuilder &builder) {
+});
 
 // SmallFloat
-LODTALK_BEGIN_CLASS_SIDE_TABLE(SmallFloat)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(SmallFloat)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(SmallFloat, Float, OF_EMPTY, 0);
+SpecialNativeClassFactory SmallFloat::Factory("SmallFloat", SCI_SmallFloat, &Float::Factory, [](ClassBuilder &builder) {
+});
 
 // Character
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Character)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Character)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Character, Magnitude, OF_EMPTY, 0);
+SpecialNativeClassFactory Character::Factory("Character", SCI_Character, &Magnitude::Factory, [](ClassBuilder &builder) {
+});
 
 // LookupKey
-LODTALK_BEGIN_CLASS_SIDE_TABLE(LookupKey)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(LookupKey)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(LookupKey, Magnitude, OF_FIXED_SIZE, 1, "key");
+SpecialNativeClassFactory LookupKey::Factory("LookupKey", SCI_LookupKey, &Magnitude::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("key");
+});
 
 // Association
-Association* Association::newNativeKeyValue(int classIndex, Oop key, Oop value)
+Association* Association::newNativeKeyValue(VMContext *context, int classIndex, Oop key, Oop value)
 {
-	auto assoc = reinterpret_cast<Association*> (newObject(2, 0, OF_FIXED_SIZE, classIndex));
+	auto assoc = reinterpret_cast<Association*> (context->newObject(2, 0, OF_FIXED_SIZE, classIndex));
 	assoc->key = key;
 	assoc->value = value;
 	return assoc;
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Association)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Association)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Association, LookupKey, OF_FIXED_SIZE, 2, "value");
+SpecialNativeClassFactory Association::Factory("Association", SCI_Association, &LookupKey::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("value");
+});
 
 // LiteralVariable
-LODTALK_BEGIN_CLASS_SIDE_TABLE(LiteralVariable)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(LiteralVariable)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(LiteralVariable, Association, OF_FIXED_SIZE, 2);
+SpecialNativeClassFactory LiteralVariable::Factory("LiteralVariable", SCI_LiteralVariable, &Association::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("value");
+});
 
 // GlobalVariable
-LODTALK_BEGIN_CLASS_SIDE_TABLE(GlobalVariable)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(GlobalVariable)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(GlobalVariable, LiteralVariable, OF_FIXED_SIZE, 2);
+SpecialNativeClassFactory GlobalVariable::Factory("GlobalVariable", SCI_GlobalVariable, &LiteralVariable::Factory, [](ClassBuilder &builder) {
+});
 
 // ClassVariable
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassVariable)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ClassVariable)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ClassVariable, LiteralVariable, OF_FIXED_SIZE, 2);
+SpecialNativeClassFactory ClassVariable::Factory("ClassVariable", SCI_ClassVariable, &LiteralVariable::Factory, [](ClassBuilder &builder) {
+});
 
 // GlobalContext
-LODTALK_BEGIN_CLASS_SIDE_TABLE(GlobalContext)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(GlobalContext)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(GlobalContext, Object, OF_EMPTY, 0);
+SpecialNativeClassFactory GlobalContext::Factory("GlobalContext", SCI_GlobalContext, &Object::Factory, [](ClassBuilder &builder) {
+});
 
 // Smalltalk image
-SmalltalkImage *SmalltalkImage::create()
+SmalltalkImage *SmalltalkImage::create(VMContext *context)
 {
-    return reinterpret_cast<SmalltalkImage*> (newObject(1, 0, OF_FIXED_SIZE, SCI_SmalltalkImage));
+    return reinterpret_cast<SmalltalkImage*> (context->newObject(1, 0, OF_FIXED_SIZE, SCI_SmalltalkImage));
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(SmalltalkImage)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(SmalltalkImage)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(SmalltalkImage, Object, OF_FIXED_SIZE, 1,
-"globals");
-
+SpecialNativeClassFactory SmalltalkImage::Factory("SmalltalkImage", SCI_SmalltalkImage, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("globals");
+});
 
 } // End of namespace Lodtalk

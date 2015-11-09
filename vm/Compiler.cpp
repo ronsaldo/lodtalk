@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "Lodtalk/Exception.hpp"
+#include "Lodtalk/VMContext.hpp"
+#include "Lodtalk/InterpreterProxy.hpp"
 #include "Compiler.hpp"
 #include "Method.hpp"
 #include "MethodBuilder.hpp"
@@ -251,15 +253,18 @@ typedef std::shared_ptr<TemporalVariableLookup> TemporalVariableLookupPtr;
 class GlobalEvaluationScope: public EvaluationScope
 {
 public:
-	GlobalEvaluationScope()
+	GlobalEvaluationScope(VMContext *context)
 		: EvaluationScope(EvaluationScopePtr()) {}
 
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
+
+private:
+    VMContext *context;
 };
 
 VariableLookupPtr GlobalEvaluationScope::lookSymbol(Oop symbol)
 {
-	auto globalVar = getGlobalFromSymbol(symbol);
+	auto globalVar = context->getGlobalFromSymbol(symbol);
 	if(globalVar.isNil())
 		return VariableLookupPtr();
 
@@ -393,8 +398,8 @@ void AbstractASTVisitor::error(Node *location, const char *format, ...)
 class ScopedInterpreter: public AbstractASTVisitor
 {
 public:
-	ScopedInterpreter(const EvaluationScopePtr &initialScope = EvaluationScopePtr())
-		: currentScope(initialScope) {}
+	ScopedInterpreter(VMContext *context, const EvaluationScopePtr &initialScope = EvaluationScopePtr())
+		: context(context), currentScope(initialScope) {}
 	~ScopedInterpreter() {}
 
 	void pushScope(EvaluationScopePtr newScope)
@@ -409,6 +414,7 @@ public:
 
 
 protected:
+    VMContext *context;
 	EvaluationScopePtr currentScope;
 };
 
@@ -416,8 +422,8 @@ protected:
 class ASTInterpreter: public ScopedInterpreter
 {
 public:
-	ASTInterpreter(const EvaluationScopePtr &initialScope, Oop currentSelf)
-		: ScopedInterpreter(initialScope), currentSelf(currentSelf) {}
+	ASTInterpreter(InterpreterProxy *interpreter, const EvaluationScopePtr &initialScope, Oop currentSelf)
+		: ScopedInterpreter(interpreter->getContext(), initialScope), interpreter(interpreter), currentSelf(context, currentSelf) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -437,6 +443,7 @@ public:
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 
 private:
+    InterpreterProxy *interpreter;
 	OopRef currentSelf;
 };
 
@@ -477,12 +484,14 @@ Oop ASTInterpreter::visitIdentifierExpression(IdentifierExpression *node)
 		error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
 
 	// Read the variable.
-	return variable->getValue();
+	interpreter->pushOop(variable->getValue());
+    return Oop();
 }
 
 Oop ASTInterpreter::visitLiteralNode(LiteralNode *node)
 {
-	return node->getValue();
+    interpreter->pushOop(node->getValue());
+	return Oop();
 }
 
 Oop ASTInterpreter::visitLocalDeclarations(LocalDeclarations *node)
@@ -499,40 +508,37 @@ Oop ASTInterpreter::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 {
-	OopRef result;
-	std::vector<OopRef> argumentValueRefs;
-	std::vector<Oop> argumentValues;
-
 	// Evaluate the receiver.
-	OopRef receiver = node->getReceiver()->acceptVisitor(this);
+	node->getReceiver()->acceptVisitor(this);
 	auto &chained = node->getChainedMessages();
 
 	// Send each message in the chain
 	for(int i = -1; i < (int)chained.size(); ++i)
 	{
 		auto message = i < 0 ? node : chained[i];
-		auto selector = message->getSelectorOop();
+        // Duplicate the receiver for the next chains
+        if(i + 1 != (int)chained.size())
+        {
+            if(i != -1)
+                interpreter->popOop();
+            interpreter->duplicateStackTop();
+        }
 
 		// Evaluate the arguments.
 		auto &arguments = message->getArguments();
-		argumentValues.clear();
 		for(auto &arg : arguments)
-		{
-			argumentValueRefs.push_back(arg->acceptVisitor(this));
-			argumentValues.push_back(argumentValueRefs.back().oop);
-		}
+            arg->acceptVisitor(this);
 
-		// Send the message.
-		result = sendMessage(receiver.oop, selector, argumentValues.size(), &argumentValues[0]);
+        interpreter->sendMessageWithSelector(message->getSelectorOop(), arguments.size());
 	}
 
-	// Return the result.
-	return result.oop;
+	return Oop();
 }
 
 Oop ASTInterpreter::visitMethodAST(MethodAST *node)
 {
-	return node->getHandle().getOop();
+	interpreter->pushOop(node->getHandle().getOop());
+    return Oop();
 }
 
 Oop ASTInterpreter::visitMethodHeader(MethodHeader *node)
@@ -549,7 +555,6 @@ Oop ASTInterpreter::visitReturnStatement(ReturnStatement *node)
 
 Oop ASTInterpreter::visitSequenceNode(SequenceNode *node)
 {
-	Oop result;
 	if(node->getLocalDeclarations())
 	{
 		// TODO: Create the new scope
@@ -557,19 +562,29 @@ Oop ASTInterpreter::visitSequenceNode(SequenceNode *node)
 		abort();
 	}
 
+    bool first = true;
 	for(auto &child : node->getChildren())
-		result = child->acceptVisitor(this);
-	return result;
+    {
+        if(first)
+            first = false;
+        else
+            interpreter->popOop();
+		child->acceptVisitor(this);
+    }
+
+	return Oop();
 }
 
 Oop ASTInterpreter::visitSelfReference(SelfReference *node)
 {
-	return currentSelf.oop;
+    interpreter->pushOop(currentSelf.oop);
+	return Oop();
 }
 
 Oop ASTInterpreter::visitSuperReference(SuperReference *node)
 {
-	return currentSelf.oop;
+	interpreter->pushOop(currentSelf.oop);
+    return Oop();
 }
 
 Oop ASTInterpreter::visitThisContextReference(ThisContextReference *node)
@@ -582,8 +597,8 @@ Oop ASTInterpreter::visitThisContextReference(ThisContextReference *node)
 class MethodSemanticAnalysis: public ScopedInterpreter
 {
 public:
-	MethodSemanticAnalysis(const EvaluationScopePtr &initialScope)
-		: ScopedInterpreter(initialScope) {}
+	MethodSemanticAnalysis(VMContext *context, const EvaluationScopePtr &initialScope)
+		: ScopedInterpreter(context, initialScope) {}
 
     virtual Oop visitArgument(Argument *node);
     virtual Oop visitArgumentList(ArgumentList *node);
@@ -781,7 +796,7 @@ Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
         auto selector = node->getSelectorOop();
 
         // If this is an optimized message, implement inlined.
-        auto optimizedSelector = getCompilerOptimizedSelectorId(selector);
+        auto optimizedSelector = context->getCompilerOptimizedSelectorId(selector);
         if(optimizedSelector != CompilerOptimizedSelector::Invalid)
         {
             if(optimizeMessage(node, optimizedSelector))
@@ -980,8 +995,8 @@ Oop MethodSemanticAnalysis::visitThisContextReference(ThisContextReference *node
 class MethodCompiler: public AbstractASTVisitor
 {
 public:
-	MethodCompiler(Oop classBinding)
-		: classBinding(classBinding) {}
+	MethodCompiler(VMContext *context, Oop classBinding)
+		: context(context), selector(context), classBinding(context, classBinding), gen(context) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -1008,6 +1023,7 @@ private:
     void generateToDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *bodyNode);
     void generateToByDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *stepNode, Node *bodyNode);
 
+    VMContext *context;
 	OopRef selector;
 	OopRef classBinding;
 	MethodAssembler::Assembler gen;
@@ -1413,7 +1429,7 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
         auto selector = node->getSelectorOop();
 
         // If this is an optimized message, try to optimize
-        auto optimizedSelector = getCompilerOptimizedSelectorId(selector);
+        auto optimizedSelector = context->getCompilerOptimizedSelectorId(selector);
         if(optimizedSelector != CompilerOptimizedSelector::Invalid)
         {
             if(generateOptimizedMessage(node, optimizedSelector))
@@ -1464,7 +1480,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 
 	// Get the method selector.
 	auto header = node->getHeader();
-	selector = makeSelector(header->getSelector());
+	selector = context->makeSelector(header->getSelector());
 
 	// Process the arguments
 	auto argumentList = header->getArgumentList();
@@ -1590,53 +1606,56 @@ Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
 }
 
 // Compiler interface
-CompiledMethod *compileMethod(const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
+CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
 {
     // Perform the semantic analysis
-    MethodSemanticAnalysis semanticAnalyzer(scope);
+    MethodSemanticAnalysis semanticAnalyzer(vmContext, scope);
     ast->acceptVisitor(&semanticAnalyzer);
 
     // Generate the actual method
-	MethodCompiler compiler(clazz->getBinding());
+	MethodCompiler compiler(vmContext, clazz->getBinding(vmContext));
     return reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
 }
 
-Oop executeDoIt(const std::string &code)
+int executeDoIt(InterpreterProxy *interpreter, const std::string &code)
 {
 	// TODO: implement this
 	abort();
 }
 
-Oop executeScript(const std::string &code, const std::string &name, const std::string &basePath)
+int executeScript(InterpreterProxy *interpreter, const std::string &code, const std::string &name, const std::string &basePath)
 {
 	// TODO: implement this
 	abort();
 }
 
-Oop executeScriptFromFile(FILE *file, const std::string &name, const std::string &basePath)
+int executeScriptFromFile(InterpreterProxy *interpreter, FILE *file, const std::string &name, const std::string &basePath)
 {
-	// Create the script context
-	Ref<ScriptContext> context(reinterpret_cast<ScriptContext*> (ScriptContext::ClassObject->basicNativeNew()));
+    // Create the script context
+    auto vmContext = interpreter->getContext();
+	Ref<ScriptContext> context(vmContext, reinterpret_cast<ScriptContext*> (vmContext->basicNativeNewFromClassIndex(SCI_ScriptContext)));
 	if(context.isNil())
-		return Oop();
-	context->globalContextClass = Oop::fromPointer(GlobalContext::MetaclassObject);
-	context->basePath = makeByteString(basePath);
+		return interpreter->primitiveFailed();
+
+	context->globalContextClass = vmContext->getGlobalContext();
+	context->basePath = vmContext->makeByteString(basePath);
 
 	// Parse the script.
-	auto ast = Lodtalk::AST::parseSourceFromFile(file);
+	auto ast = Lodtalk::AST::parseSourceFromFile(vmContext, file);
 	if(!ast)
-		return Oop();
+		return interpreter->primitiveFailed();
 
 	// Create the global scope
-	auto scope = std::make_shared<GlobalEvaluationScope> ();
+	auto scope = std::make_shared<GlobalEvaluationScope> (vmContext);
 
 	// Interpret the script.
-	ASTInterpreter interpreter(scope, context.getOop());
-	auto result = ast->acceptVisitor(&interpreter);
-	return result;
+	ASTInterpreter astInterpreter(interpreter, scope, context.getOop());
+	ast->acceptVisitor(&astInterpreter);
+
+    return 0;
 }
 
-Oop executeScriptFromFileNamed(const std::string &filename)
+int executeScriptFromFileNamed(InterpreterProxy *interpreter, const std::string &filename)
 {
 	StdFile file(filename, "r");
 	if(!file)
@@ -1644,53 +1663,73 @@ Oop executeScriptFromFileNamed(const std::string &filename)
 
 	std::string basePathString = dirname(filename);
 
-	return executeScriptFromFile(file, filename, basePathString);
+	return executeScriptFromFile(interpreter, file, filename, basePathString);
 }
 
 // ScriptContext
-Oop ScriptContext::setCurrentCategory(Oop category)
+int ScriptContext::stSetCurrentCategory(InterpreterProxy *interpreter)
 {
-	currentCategory = category;
-	return selfOop();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+    auto self = reinterpret_cast<ScriptContext*> (interpreter->getReceiver().pointer);
+
+	self->currentCategory = interpreter->getTemporary(0);
+	return interpreter->returnReceiver();
 }
 
-Oop ScriptContext::setCurrentClass(Oop classObject)
+int ScriptContext::stSetCurrentClass(InterpreterProxy *interpreter)
 {
-	currentClass = classObject;
-	return selfOop();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+    auto self = reinterpret_cast<ScriptContext*> (interpreter->getReceiver().pointer);
+
+	self->currentClass = interpreter->getTemporary(0);
+	return interpreter->returnReceiver();
 }
 
-Oop ScriptContext::executeFileNamed(Oop fileNameOop)
+int ScriptContext::stExecuteFileNamed(InterpreterProxy *interpreter)
 {
-	std::string basePathString;
+    auto context = interpreter->getContext();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+    auto self = reinterpret_cast<ScriptContext*> (interpreter->getReceiver().pointer);
+
+    auto fileNameOop = interpreter->getTemporary(0);
 	if(fileNameOop.isNil())
 		nativeError("expected a file name.");
 
-	if(!basePath.isNil())
-		basePathString = getByteStringData(basePath);
-	std::string fileNameString = getByteStringData(fileNameOop);
+    std::string basePathString;
+	if(!self->basePath.isNil())
+		basePathString = context->getByteStringData(self->basePath);
+	std::string fileNameString = context->getByteStringData(fileNameOop);
 	std::string fullFileName = joinPath(basePathString, fileNameString);
-	return executeScriptFromFileNamed(fullFileName);
+	return executeScriptFromFileNamed(interpreter, fullFileName);
 }
 
-Oop ScriptContext::addFunction(Oop methodAstHandle)
+int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
 {
+    auto context = interpreter->getContext();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+    auto self = reinterpret_cast<ScriptContext*> (interpreter->getReceiver().pointer);
+    auto methodAstHandle = interpreter->getTemporary(0);
+
 	if(isNil(methodAstHandle))
 		nativeError("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
 		nativeError("expected a method AST handle.");
 
 	// Check the class
-	if(!isClassOrMetaclass(globalContextClass))
+	if(!context->isClassOrMetaclass(self->globalContextClass))
 		nativeError("a global context class is needed");
-	auto clazz = reinterpret_cast<ClassDescription*> (globalContextClass.pointer);
+	auto clazz = reinterpret_cast<ClassDescription*> (self->globalContextClass.pointer);
 
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
 	auto ast = handle->ast;
 
 	// Create the global scope
-	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
+	auto globalScope = std::make_shared<GlobalEvaluationScope> (context);
 
 	// TODO: Create the class global variables scope.
 
@@ -1698,34 +1737,40 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
 
 	// Compile the method
-	Ref<CompiledMethod> compiledMethod = compileMethod(instanceVarScope, clazz, ast);
+	Ref<CompiledMethod> compiledMethod(context, compileMethod(context, instanceVarScope, clazz, ast));
 
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();
-	clazz->methodDict->atPut(selector, compiledMethod.getOop());
+	clazz->methodDict->atPut(context, selector, compiledMethod.getOop());
 
 	// Return self
-	return selfOop();
+	return interpreter->returnReceiver();
 }
 
-Oop ScriptContext::addMethod(Oop methodAstHandle)
+int ScriptContext::stAddMethod(InterpreterProxy *interpreter)
 {
+    auto context = interpreter->getContext();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+    auto self = reinterpret_cast<ScriptContext*> (interpreter->getReceiver().pointer);
+    auto methodAstHandle = interpreter->getTemporary(0);
+
 	if(isNil(methodAstHandle))
 		nativeError("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
 		nativeError("expected a method AST handle.");
 
 	// Check the class
-	if(!isClassOrMetaclass(globalContextClass))
+	if(!context->isClassOrMetaclass(self->currentClass))
 		nativeError("a class is needed for adding a method.");
-	auto clazz = reinterpret_cast<ClassDescription*> (currentClass.pointer);
+	auto clazz = reinterpret_cast<ClassDescription*> (self->currentClass.pointer);
 
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
 	auto ast = handle->ast;
 
 	// Create the global scope
-	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
+	auto globalScope = std::make_shared<GlobalEvaluationScope> (context);
 
 	// TODO: Create the class variables scope.
 
@@ -1733,38 +1778,40 @@ Oop ScriptContext::addMethod(Oop methodAstHandle)
 	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
 
 	// Compile the method
-	Ref<CompiledMethod> compiledMethod = compileMethod(instanceVarScope, clazz, ast);
+	Ref<CompiledMethod> compiledMethod(context, compileMethod(context, instanceVarScope, clazz, ast));
 
 	// Register the method in the current class
 	auto selector = compiledMethod->getSelector();
-	clazz->methodDict->atPut(selector, compiledMethod.getOop());
+	clazz->methodDict->atPut(context, selector, compiledMethod.getOop());
 
 	// Return self
-	return selfOop();
+	return interpreter->returnReceiver();
 }
 
 // The script context
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ScriptContext)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory ScriptContext::Factory("ScriptContext", SCI_ScriptContext, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("currentCategory", "currentClass", "globalContextClass", "basePath");
 
-LODTALK_BEGIN_CLASS_TABLE(ScriptContext)
-	LODTALK_METHOD("category:", &ScriptContext::setCurrentCategory)
-	LODTALK_METHOD("class:", &ScriptContext::setCurrentClass)
-	LODTALK_METHOD("function:", &ScriptContext::addFunction)
-	LODTALK_METHOD("method:", &ScriptContext::addMethod)
-	LODTALK_METHOD("executeFileNamed:", &ScriptContext::executeFileNamed)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ScriptContext, Object, OF_FIXED_SIZE, 4,
-"currentCategory currentClass globalContextClass basePath");
+    builder
+        .addMethod("category:", ScriptContext::stSetCurrentCategory)
+        .addMethod("class:", ScriptContext::stSetCurrentClass)
+        .addMethod("function:", ScriptContext::stAddFunction)
+        .addMethod("method:", ScriptContext::stAddMethod)
+        .addMethod("executeFileNamed:", ScriptContext::stExecuteFileNamed);
+});
 
 // The method ast handle
-LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodASTHandle)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory MethodASTHandle::Factory("MethodASTHandle", SCI_MethodASTHandle, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
 
-LODTALK_BEGIN_CLASS_TABLE(MethodASTHandle)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(MethodASTHandle, Object, OF_INDEXABLE_8, 0);
+MethodASTHandle *MethodASTHandle::basicNativeNew(VMContext *context, AST::MethodAST *ast)
+{
+    auto result = reinterpret_cast<MethodASTHandle*> (context->newObject(0, sizeof(ast), OF_INDEXABLE_8, SCI_MethodASTHandle));
+    result->ast = ast;
+    return result;
+}
 
 } // End of namespace Lodtalk

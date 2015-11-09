@@ -8,6 +8,64 @@
 
 namespace Lodtalk
 {
+class StackInterpreter;
+
+/**
+ * Stack interpreter proxy.
+ */
+class StackInterpreterProxy: public InterpreterProxy
+{
+public:
+    StackInterpreterProxy(StackInterpreter *interpreter)
+        : interpreter(interpreter)
+    {}
+
+    virtual VMContext *getContext();
+
+    // Stack manipulation
+    virtual void pushOop(Oop oop) override;
+    virtual void pushSmallInteger(SmallIntegerValue value) override;
+
+	virtual Oop &stackOopAt(size_t index) override;
+	virtual Oop &stackTop() override;
+    virtual Oop popOop() override;
+    virtual void popMultiplesOops(int count) override;
+    virtual void duplicateStackTop() override;
+
+    virtual Oop getMethod() override;
+
+	virtual Oop &receiver() override;
+    virtual Oop getReceiver() override;
+
+	virtual Oop &thisContext() override;
+    virtual Oop getThisContext() override;
+
+    // Returning
+    virtual int returnTop() override;
+    virtual int returnReceiver() override;
+
+    // Temporaries
+    virtual size_t getArgumentCount() override;
+    virtual size_t getTemporaryCount() override;
+
+    virtual Oop getTemporary(size_t index) override;
+    virtual void setTemporary(size_t index, Oop value) override;
+
+    // Primitive return
+    virtual int primitiveFailed() override;
+    virtual int primitiveFailedWithCode(int errorCode) override;
+
+    // Basic new
+    virtual void sendBasicNew() override;
+    virtual void sendBasicNewWithSize(size_t size) override;
+
+    // Message send.
+    virtual void sendMessage(int argumentCount) override;
+    virtual void sendMessageWithSelector(Oop selector, int argumentCount) override;
+
+private:
+    StackInterpreter *interpreter;
+};
 
 /**
  * The stack interpreter.
@@ -15,8 +73,29 @@ namespace Lodtalk
  */
 class StackInterpreter
 {
+private:
+	// Use the stack memory.
+    VMContext *context;
+	StackMemory *stack;
+
+	// Interpreter data.
+	size_t pc;
+	int nextOpcode;
+	int currentOpcode;
+
+	// Instruction decoding.
+	uint64_t extendA;
+	int64_t extendB;
+
+	// Frame meta data.
+	Oop *literalArray;
+	CompiledMethod *method;
+	bool hasContext;
+	bool isBlock;
+	size_t argumentCount;
+
 public:
-	StackInterpreter(StackMemory *stack);
+	StackInterpreter(VMContext *context, StackMemory *stack);
 	~StackInterpreter();
 
 	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
@@ -24,7 +103,7 @@ public:
 
 	void interpret();
 
-private:
+public:
 	void error(const char *message)
 	{
 		fprintf(stdout, "Interpreter error: %s\n", message);
@@ -83,7 +162,7 @@ private:
 
     void pushIntegerObject(int64_t value)
     {
-        auto oop = signedInt64ObjectFor(value);
+        auto oop = context->signedInt64ObjectFor(value);
         pushOop(oop);
 
         // The GC could have been triggered?
@@ -93,7 +172,7 @@ private:
 
     void pushFloatObject(double value)
     {
-        auto oop = floatObjectFor(value);
+        auto oop = context->floatObjectFor(value);
         pushOop(oop);
 
         // The GC could have been triggered?
@@ -120,7 +199,7 @@ private:
 		return reinterpret_cast<uint8_t*> (method);
 	}
 
-	Oop currentReceiver() const
+	const Oop &currentReceiver() const
 	{
 		return stack->getReceiver();
 	}
@@ -145,17 +224,17 @@ private:
 		return stack->popUInt();
 	}
 
-	Oop stackTop()
+	Oop &stackTop()
 	{
 		return stack->stackTop();
 	}
 
-	Oop stackOopAtOffset(size_t offset)
+	Oop &stackOopAtOffset(size_t offset)
 	{
 		return stack->stackOopAtOffset(offset);
 	}
 
-    Oop stackOopAt(size_t index)
+    Oop &stackOopAt(size_t index)
 	{
 		return stackOopAtOffset(index*sizeof(Oop));
 	}
@@ -180,7 +259,7 @@ private:
 		popPC();
 
 		// Pop the arguments and the receiver.
-		stack->popMultiplesOops(argumentCount + 1);
+		popMultiplesOops(argumentCount + 1);
 
 		// Push the return value.
 		pushOop(value);
@@ -211,33 +290,32 @@ private:
 		localReturnValue(value);
 	}
 
+    void returnTop()
+    {
+        returnValue(popOop());
+    }
+
+    void returnReceiver()
+    {
+        returnValue(currentReceiver());
+    }
+
+    void callNativeMethod(NativeMethod *method, int argumentCount);
 	void activateMethodFrame(CompiledMethod *method);
     void activateBlockClosure(BlockClosure *closure);
 	void fetchFrameData();
 
-private:
-	// Use the stack memory.
-	StackMemory *stack;
+    VMContext *getContext()
+    {
+        return context;
+    }
 
-	// Interpreter data.
-	size_t pc;
-	int nextOpcode;
-	int currentOpcode;
+    StackMemory *getStack()
+    {
+        return stack;
+    }
 
-	// Instruction decoding.
-	uint64_t extendA;
-	int64_t extendB;
-
-	// Frame meta data.
-	Oop *literalArray;
-	CompiledMethod *method;
-	bool hasContext;
-	bool isBlock;
-	size_t argumentCount;
-
-
-private:
-	CompiledMethod *getMethod()
+    CompiledMethod *getMethod()
 	{
 		return method;
 	}
@@ -319,6 +397,17 @@ private:
         // TODO: This is an opportunity to stop myself.
     }
 
+    Oop lookupMessage(Oop receiver, Oop selector)
+    {
+    	auto classIndex = classIndexOf(receiver);
+    	auto classOop = context->getClassFromIndex(classIndex);
+    	assert(!isNil(classOop));
+
+    	// Lookup the method
+    	auto behavior = reinterpret_cast<Behavior*> (classOop.pointer);
+    	return behavior->lookupSelector(selector);
+    }
+
 	void sendSelectorArgumentCount(Oop selector, int argumentCount)
 	{
 		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
@@ -326,10 +415,10 @@ private:
 		// Get the receiver.
 		auto newReceiver = stack->stackOopAtOffset(argumentCount * sizeof(Oop));
         auto newReceiverClassIndex = classIndexOf(newReceiver);
-		//printf("Send #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
+		//printf("Send #%s [%s]%p\n", context->getByteSymbolData(selector).c_str(), context->getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 
         // This could be a block context activation.
-        if(newReceiverClassIndex == SCI_BlockClosure && selector == getBlockActivationSelector(argumentCount))
+        if(newReceiverClassIndex == SCI_BlockClosure && selector == context->getBlockActivationSelector(argumentCount))
         {
             auto blockClosure = reinterpret_cast<BlockClosure*> (newReceiver.pointer);
             if((int)blockClosure->getArgumentCount() == argumentCount)
@@ -348,7 +437,7 @@ private:
 		if(calledMethodOop.isNil())
 		{
 			// TODO: Send a DNU
-            printf("TODO: Send DNU  #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
+            printf("TODO: Send DNU  #%s [%s]%p\n", context->getByteSymbolData(selector).c_str(), context->getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 			LODTALK_UNIMPLEMENTED();
 		}
 
@@ -365,26 +454,12 @@ private:
 		}
 		else if(methodClassIndex == SCI_NativeMethod)
 		{
-			// Reverse the argument order.
-			Oop nativeMethodArgs[CompiledMethodHeader::ArgumentMask];
-			for(int i = 0; i < argumentCount; ++i)
-				nativeMethodArgs[argumentCount - i - 1] = stack->stackOopAtOffset(i*sizeof(Oop));
+            // Push the return PC.
+            pushPC();
 
 			// Call the native method
 			auto nativeMethod = reinterpret_cast<NativeMethod*> (calledMethodOop.pointer);
-			Oop result = nativeMethod->execute(newReceiver, argumentCount, nativeMethodArgs);
-
-			// Pop the arguments and the receiver.
-			popMultiplesOops(argumentCount + 1);
-
-			// Push the result in the stack.
-			pushOop(result);
-
-			// Re fetch the frame data to continue.
-			fetchFrameData();
-
-			// Fetch the next instruction
-			fetchNextInstructionOpcode();
+            callNativeMethod(nativeMethod, argumentCount);
 		}
 		else
 		{
@@ -393,6 +468,23 @@ private:
 		}
 	}
 
+    void sendMessage(int argumentCount)
+    {
+        sendSelectorArgumentCount(popOop(), argumentCount);
+    }
+
+    void sendBasicNew()
+    {
+        sendSelectorArgumentCount(context->getSpecialMessageSelector(SpecialMessageSelector::BasicNew), 0);
+    }
+
+    void sendBasicNewWithSize(size_t size)
+    {
+        pushUInt(size);
+        sendSelectorArgumentCount(context->getSpecialMessageSelector(SpecialMessageSelector::BasicNewSize), 1);
+    }
+
+private:
     void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
     {
         auto selector = getLiteral(literalIndex);
@@ -401,7 +493,7 @@ private:
 
     void sendSpecialArgumentCount(SpecialMessageSelector specialSelectorId, int argumentCount)
     {
-        sendSelectorArgumentCount(getSpecialMessageSelector(specialSelectorId), argumentCount);
+        sendSelectorArgumentCount(context->getSpecialMessageSelector(specialSelectorId), argumentCount);
     }
 
 	// Bytecode instructions
@@ -564,7 +656,7 @@ private:
 
 	void interpretReturnReceiver()
 	{
-		returnValue(currentReceiver());
+		returnReceiver();
 	}
 
 	void interpretReturnTrue()
@@ -584,7 +676,7 @@ private:
 
 	void interpretReturnTop()
 	{
-		returnValue(popOop());
+		returnTop();
 	}
 
 	void interpretBlockReturnNil()
@@ -696,7 +788,7 @@ private:
         auto popElements = arraySizeAndFlag & 128;
 
         // Refetch the frame data
-        auto array = Array::basicNativeNew(arraySize);
+        auto array = Array::basicNativeNew(context, arraySize);
         fetchFrameData();
 
         // Pop elements into the array.
@@ -922,7 +1014,7 @@ private:
         stack->ensureFrameIsMarried();
 
         // Create the block closure.
-        BlockClosure *blockClosure = BlockClosure::create(numCopied);
+        BlockClosure *blockClosure = BlockClosure::create(context, numCopied);
         fetchFrameData(); // For compaction
 
         // Set the closure data.
@@ -1567,7 +1659,7 @@ private:
     void interpretSpecialMessageClass()
     {
         fetchNextInstructionOpcode();
-        Oop clazz = getClassFromOop(popOop());
+        Oop clazz = context->getClassFromOop(popOop());
         pushOop(clazz);
     }
 
@@ -1609,8 +1701,8 @@ private:
     }
 };
 
-StackInterpreter::StackInterpreter(StackMemory *stack)
-	: stack(stack)
+StackInterpreter::StackInterpreter(VMContext *context, StackMemory *stack)
+	: context(context), stack(stack), pc(0), nextOpcode(0), currentOpcode(0)
 {
 }
 
@@ -1703,6 +1795,41 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	fetchNextInstructionOpcode();
 }
 
+void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, int argumentCount)
+{
+    // Get the receiver
+	auto receiver = stackOopAtOffset((1 + argumentCount)*sizeof(Oop));
+
+	// Push the frame pointer.
+	pushPointer(stack->getFramePointer()); // Return frame pointer.
+
+	// Set the new frame pointer.
+	stack->setFramePointer(stack->getStackPointer());
+
+	// Push the method object.
+	pushOop(Oop::fromPointer(nativeMethod));
+	this->method = nullptr;
+
+	// Encode frame metadata
+	pushUInt(encodeFrameMetaData(false, false, argumentCount));
+
+	// Push the nil this context.
+	pushOop(Oop());
+
+	// Push the receiver oop.
+	pushOop(receiver);
+
+	// Fetch the frame data.
+	fetchFrameData();
+
+    // Set the new pc.
+    pc = 0;
+
+    // Call the primitive
+    StackInterpreterProxy proxy(this);
+    nativeMethod->primitive(&proxy);
+}
+
 void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 {
     int numArguments = closure->numArgs.decodeSmallInteger();
@@ -1777,7 +1904,7 @@ void StackInterpreter::interpret()
 	}
 }
 
-Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments)
+/*Oop interpretCompiledMethod(VMContext *context, CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments)
 {
 	Oop result;
 	withStackMemory([&](StackMemory *stack) {
@@ -1787,7 +1914,7 @@ Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCo
 	return result;
 }
 
-Oop interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments)
+Oop interpretBlockClosure(VMContext *context, BlockClosure *closure, int argumentCount, Oop *arguments)
 {
 	Oop result;
 	withStackMemory([&](StackMemory *stack) {
@@ -1796,5 +1923,154 @@ Oop interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *argumen
 	});
 	return result;
 }
+*/
 
+/**
+ * Stack interpreter proxy
+ */
+VMContext *StackInterpreterProxy::getContext()
+{
+    return interpreter->getContext();
+}
+
+void StackInterpreterProxy::pushOop(Oop oop)
+{
+    interpreter->pushOop(oop);
+}
+
+void StackInterpreterProxy::pushSmallInteger(SmallIntegerValue value)
+{
+    pushOop(Oop::encodeSmallInteger(value));
+}
+
+Oop &StackInterpreterProxy::stackOopAt(size_t index)
+{
+    return interpreter->stackOopAt(index);
+}
+
+Oop &StackInterpreterProxy::stackTop()
+{
+    return interpreter->stackTop();
+}
+
+Oop StackInterpreterProxy::popOop()
+{
+    return interpreter->popOop();
+}
+
+void StackInterpreterProxy::popMultiplesOops(int count)
+{
+    interpreter->popMultiplesOops(count);
+}
+
+void StackInterpreterProxy::duplicateStackTop()
+{
+    interpreter->pushOop(stackTop());
+}
+
+Oop StackInterpreterProxy::getMethod()
+{
+    return Oop::fromPointer(interpreter->getMethod());
+}
+
+Oop &StackInterpreterProxy::receiver()
+{
+    return interpreter->getStack()->receiver();
+}
+
+Oop StackInterpreterProxy::getReceiver()
+{
+    return interpreter->currentReceiver();
+}
+
+Oop &StackInterpreterProxy::thisContext()
+{
+    return interpreter->getStack()->thisContext();
+}
+
+Oop StackInterpreterProxy::getThisContext()
+{
+    return interpreter->getStack()->getThisContext();
+}
+
+// Returning
+int StackInterpreterProxy::returnTop()
+{
+    interpreter->returnTop();
+    return 0;
+}
+
+int StackInterpreterProxy::returnReceiver()
+{
+    interpreter->returnReceiver();
+    return 0;
+}
+
+// Temporaries
+size_t StackInterpreterProxy::getArgumentCount()
+{
+    return interpreter->getStack()->getArgumentCount();
+}
+
+size_t StackInterpreterProxy::getTemporaryCount()
+{
+    auto method = interpreter->getStack()->getMethod();
+    if(!isNil(method))
+        return method->getTemporalCount();
+    return 0;
+}
+
+Oop StackInterpreterProxy::getTemporary(size_t index)
+{
+    return interpreter->getTemporary(index);
+}
+
+void StackInterpreterProxy::setTemporary(size_t index, Oop value)
+{
+    interpreter->setTemporary(index, value);
+}
+
+// Primitive return
+int StackInterpreterProxy::primitiveFailed()
+{
+    return primitiveFailedWithCode(-1);
+}
+
+int StackInterpreterProxy::primitiveFailedWithCode(int errorCode)
+{
+    abort();
+    return -1;
+}
+
+// Basic new
+void StackInterpreterProxy::sendBasicNew()
+{
+    interpreter->sendBasicNew();
+}
+
+void StackInterpreterProxy::sendBasicNewWithSize(size_t size)
+{
+    interpreter->sendBasicNewWithSize(size);
+}
+
+// Message send.
+void StackInterpreterProxy::sendMessage(int argumentCount)
+{
+    interpreter->sendMessage(argumentCount);
+}
+
+void StackInterpreterProxy::sendMessageWithSelector(Oop selector, int argumentCount)
+{
+    interpreter->sendSelectorArgumentCount(selector, argumentCount);
+}
+
+void VMContext::withInterpreter(const WithInterpreterBlock &block)
+{
+    withStackMemory(this, [&](StackMemory *stack) {
+		StackInterpreter interpreter(this, stack);
+        StackInterpreterProxy proxy(&interpreter);
+		block(&proxy);
+	});
+
+}
 } // End of namespace Lodtalk

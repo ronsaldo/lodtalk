@@ -1,8 +1,8 @@
 #ifndef METHOD_BUILDER_HPP
 #define METHOD_BUILDER_HPP
 
-#include "Object.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 #include "Method.hpp"
 
 namespace Lodtalk
@@ -106,7 +106,7 @@ protected:
 class Assembler
 {
 public:
-	Assembler();
+	Assembler(VMContext *context);
 	~Assembler();
 
 	InstructionNode *addInstruction(InstructionNode *instruction);
@@ -188,6 +188,7 @@ public:
 private:
 	size_t computeInstructionsSize();
 
+    VMContext *context;
 	std::vector<OopRef> literals;
 	std::vector<InstructionNode*> instructionStream;
 };

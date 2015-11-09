@@ -1,5 +1,5 @@
-#include "Object.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 #include "Method.hpp"
 #include "StackInterpreter.hpp"
 #include "BytecodeSets.hpp"
@@ -8,12 +8,7 @@ namespace Lodtalk
 {
 
 // CompiledMethod
-Oop CompiledMethod::execute(Oop receiver, int argumentCount, Oop *arguments)
-{
-	return interpretCompiledMethod(this, receiver, argumentCount, arguments);
-}
-
-CompiledMethod *CompiledMethod::newMethodWithHeader(size_t numberOfBytes, CompiledMethodHeader header)
+CompiledMethod *CompiledMethod::newMethodWithHeader(VMContext *context, size_t numberOfBytes, CompiledMethodHeader header)
 {
 	// Add the method header size
 	numberOfBytes += sizeof(void*);
@@ -35,7 +30,7 @@ CompiledMethod *CompiledMethod::newMethodWithHeader(size_t numberOfBytes, Compil
 	auto objectSize = headerSize + bodySize;
 
 	// Allocate the compiled method
-	auto methodData = allocateObjectMemory(objectSize);
+	auto methodData = context->allocateObjectMemory(objectSize);
 	auto objectHeader = reinterpret_cast<ObjectHeader*> (methodData);
 
 	// Set the method header
@@ -63,110 +58,66 @@ CompiledMethod *CompiledMethod::newMethodWithHeader(size_t numberOfBytes, Compil
 	return reinterpret_cast<CompiledMethod*> (methodData);
 }
 
-static Oop newMethodHeader(Oop clazz, Oop numberOfBytes, Oop headerWord)
-{
-	return nilOop();
-}
-
 Oop CompiledMethod::dump()
 {
     dumpSistaBytecode(getFirstBCPointer(), getByteDataSize());
     return selfOop();
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(CompiledMethod)
-	LODTALK_METHOD("newMethod:header:", newMethodHeader)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(CompiledMethod)
-    LODTALK_METHOD("dump", &CompiledMethod::dump)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(CompiledMethod, ByteArray, OF_COMPILED_METHOD, 0);
+SpecialNativeClassFactory CompiledMethod::Factory("CompiledMethod", SCI_CompiledMethod, &ByteArray::Factory, [](ClassBuilder &builder) {
+    builder
+        .compiledMethodFormat();
+    //LODTALK_METHOD("newMethod:header:", newMethodHeader)
+    //LODTALK_METHOD("dump", &CompiledMethod::dump)
+});
 
 // NativeMethod
-NativeMethod *NativeMethod::create(NativeMethodWrapper *wrapper)
+NativeMethod *NativeMethod::create(VMContext *context, PrimitiveFunction primitive)
 {
-    auto result = reinterpret_cast<NativeMethod*> (newObject(0, sizeof(wrapper), OF_INDEXABLE_8, SCI_NativeMethod));
-    result->wrapper = wrapper;
+    auto result = reinterpret_cast<NativeMethod*> (context->newObject(0, sizeof(primitive), OF_INDEXABLE_8, SCI_NativeMethod));
+    result->primitive = primitive;
     return result;
 }
 
-Oop NativeMethod::execute(Oop receiver, int argumentCount, Oop *arguments)
-{
-	return wrapper->execute(receiver, argumentCount, arguments);
-}
-
-LODTALK_BEGIN_CLASS_SIDE_TABLE(NativeMethod)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(NativeMethod)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(NativeMethod, Object, OF_INDEXABLE_8, sizeof(NativeMethodWrapper*));
+SpecialNativeClassFactory NativeMethod::Factory("NativeMethod", SCI_NativeMethod, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
 
 // InstructionStream
-LODTALK_BEGIN_CLASS_SIDE_TABLE(InstructionStream)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(InstructionStream)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(InstructionStream, Object, OF_FIXED_SIZE, InstructionStream::InstructionStreamVariableCount,
-"sender pc");
+SpecialNativeClassFactory InstructionStream::Factory("InstructionStream", SCI_InstructionStream, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("sender", "pc");
+});
 
 // Context
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Context)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory Context::Factory("Context", SCI_Context, &InstructionStream::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableSizeWithInstanceVariables()
+        .addInstanceVariables("stackp", "method", "closureOrNil", "receiver");
+});
 
-LODTALK_BEGIN_CLASS_TABLE(Context)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Context, InstructionStream, OF_VARIABLE_SIZE_IVARS, Context::ContextVariableCount,
-"stackp method closureOrNil receiver");
-
-Context *Context::create(size_t slotCount)
+Context *Context::create(VMContext *context, size_t slotCount)
 {
-    return reinterpret_cast<Context*> (newObject(ContextVariableCount, slotCount, OF_VARIABLE_SIZE_IVARS, SCI_Context));
+    return reinterpret_cast<Context*> (context->newObject(ContextVariableCount, slotCount, OF_VARIABLE_SIZE_IVARS, SCI_Context));
 }
 
 // BlockClosure
-BlockClosure *BlockClosure::create(int numcopied)
+BlockClosure *BlockClosure::create(VMContext *context, int numcopied)
 {
-    return reinterpret_cast<BlockClosure*> (newObject(BlockClosureVariableCount, numcopied, OF_VARIABLE_SIZE_IVARS, SCI_BlockClosure));
+    return reinterpret_cast<BlockClosure*> (context->newObject(BlockClosureVariableCount, numcopied, OF_VARIABLE_SIZE_IVARS, SCI_BlockClosure));
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(BlockClosure)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(BlockClosure)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(BlockClosure, Object, OF_VARIABLE_SIZE_IVARS, BlockClosure::BlockClosureVariableCount,
-"outerContext startpc numArgs");
+SpecialNativeClassFactory BlockClosure::Factory("BlockClosure", SCI_BlockClosure, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableSizeWithInstanceVariables()
+        .addInstanceVariables("outerContext", "startpc", "numArgs");
+});
 
 // MessageSend
-LODTALK_BEGIN_CLASS_SIDE_TABLE(MessageSend)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(MessageSend)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(MessageSend, Object, OF_FIXED_SIZE, MessageSend::MessageSendVariableCount,
-"receiver selector arguments");
-
-// Native method descriptor
-Oop NativeMethodDescriptor::getSelector() const
-{
-	selector = ByteSymbol::fromNative(selectorString);
-	return selector.oop;
-}
-
-Oop NativeMethodDescriptor::getMethod() const
-{
-	nativeMethod.reset(NativeMethod::create(methodWrapper));
-
-	return nativeMethod.getOop();
-}
+SpecialNativeClassFactory MessageSend::Factory("MessageSend", SCI_MessageSend, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("receiver", "selector", "arguments");
+});
 
 } // End of namespace Lodtalk

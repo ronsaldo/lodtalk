@@ -1,3 +1,4 @@
+#include "Lodtalk/VMContext.hpp"
 #include "AST.hpp"
 #include "Compiler.hpp"
 
@@ -70,7 +71,7 @@ void IdentifierExpression::setVariable(const VariableLookupPtr &newVariable)
 
 Oop IdentifierExpression::getSymbol() const
 {
-	return makeByteSymbol(identifier);
+	return getCurrentContext()->makeByteSymbol(identifier);
 }
 
 // Literal node
@@ -129,7 +130,7 @@ const std::string &MessageSendNode::getSelector() const
 
 Oop MessageSendNode::getSelectorOop() const
 {
-	return makeSelector(selector);
+	return getCurrentContext()->makeSelector(selector);
 }
 
 Node *MessageSendNode::getReceiver() const
@@ -281,7 +282,7 @@ const std::string &LocalDeclaration::getName() const
 
 Oop LocalDeclaration::getSymbolOop()
 {
-    return makeByteSymbol(name);
+    return getCurrentContext()->makeByteSymbol(name);
 }
 
 // Local declarations
@@ -330,7 +331,7 @@ const std::string &Argument::getName()
 
 Oop Argument::getSymbolOop()
 {
-	return makeByteSymbol(name);
+	return getCurrentContext()->makeByteSymbol(name);
 }
 
 // Argument list
@@ -462,8 +463,8 @@ void MethodHeader::appendSelectorAndArgument(const std::string &selectorExtra, A
 }
 
 // Method AST
-MethodAST::MethodAST(MethodHeader *header, Node *pragmas, SequenceNode *body)
-	: header(header), body(body)
+MethodAST::MethodAST(VMContext *context, MethodHeader *header, Node *pragmas, SequenceNode *body)
+	: context(context), header(header), body(body), astHandle(context)
 {
 }
 
@@ -496,11 +497,8 @@ ArgumentList *MethodAST::getArgumentList() const
 const Ref<MethodASTHandle> &MethodAST::getHandle()
 {
 	if(astHandle.isNil())
-	{
-		astHandle.reset(reinterpret_cast<MethodASTHandle*> (MethodASTHandle::ClassObject->basicNativeNew(sizeof(void*))));
-		if(!astHandle.isNil())
-			astHandle->ast = this;
-	}
+		astHandle.reset(MethodASTHandle::basicNativeNew(context, this));
+
 	return astHandle;
 }
 

@@ -5,17 +5,19 @@
 
 namespace Lodtalk
 {
+class InterpreterProxy;
+
 // Script class
 class ScriptContext: public Object
 {
-	ScriptContext() {}
-	LODTALK_NATIVE_CLASS();
 public:
-	Oop setCurrentCategory(Oop category);
-	Oop setCurrentClass(Oop classObject);
-	Oop addFunction(Oop functionAst);
-	Oop addMethod(Oop methodAst);
-	Oop executeFileNamed(Oop fileName);
+    static SpecialNativeClassFactory Factory;
+
+	static int stSetCurrentCategory(InterpreterProxy *proxy);
+	static int stSetCurrentClass(InterpreterProxy *proxy);
+	static int stAddFunction(InterpreterProxy *proxy);
+	static int stAddMethod(InterpreterProxy *proxy);
+	static int stExecuteFileNamed(InterpreterProxy *proxy);
 
 	Oop currentCategory;
 	Oop currentClass;
@@ -26,19 +28,20 @@ public:
 // Method AST handle
 class MethodASTHandle: public Object
 {
-	MethodASTHandle() {}
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
+    static MethodASTHandle *basicNativeNew(VMContext *context, AST::MethodAST *ast);
 
 	AST::MethodAST *ast;
 };
 
 
 // Compiler interface
-Oop executeDoIt(const std::string &code);
-Oop executeScript(const std::string &code, const std::string &name = "unnamed", const std::string &basePath = ".");
-Oop executeScriptFromFile(FILE *file, const std::string &name = "unnamed", const std::string &basePath = ".");
-Oop executeScriptFromFileNamed(const std::string &fileName);
+int executeDoIt(InterpreterProxy *interpreter, const std::string &code);
+int executeScript(InterpreterProxy *interpreter, const std::string &code, const std::string &name = "unnamed", const std::string &basePath = ".");
+int executeScriptFromFile(InterpreterProxy *interpreter, FILE *file, const std::string &name = "unnamed", const std::string &basePath = ".");
+int executeScriptFromFileNamed(InterpreterProxy *interpreter, const std::string &fileName);
 
 }
 

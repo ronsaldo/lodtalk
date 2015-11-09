@@ -1,33 +1,40 @@
 #if defined(__linux__)
 #include <unistd.h>
 #include <stdio.h>
+#include "Lodtalk/InterpreterProxy.hpp"
 #include "InputOutput.hpp"
 #include "Method.hpp"
 
 namespace Lodtalk
 {
 
-Oop OSIO::stStdout(Oop clazz)
+int OSIO::stStdout(InterpreterProxy *interpreter)
 {
-	return Oop::encodeSmallInteger(STDOUT_FILENO);
+    interpreter->pushSmallInteger(STDOUT_FILENO);
+	return interpreter->returnTop();
 }
 
-Oop OSIO::stStdin(Oop clazz)
+int OSIO::stStdin(InterpreterProxy *interpreter)
 {
-	return Oop::encodeSmallInteger(STDIN_FILENO);
+    interpreter->pushSmallInteger(STDOUT_FILENO);
+	return interpreter->returnTop();
 }
 
-Oop OSIO::stStderr(Oop clazz)
+int OSIO::stStderr(InterpreterProxy *interpreter)
 {
-	return Oop::encodeSmallInteger(STDERR_FILENO);
+    interpreter->pushSmallInteger(STDOUT_FILENO);
+	return interpreter->returnTop();
 }
 
-Oop OSIO::writeOffsetSizeTo(Oop clazz, Oop bufferOop, Oop offsetOop, Oop sizeOop, Oop fileOop)
+// Oop clazz, Oop bufferOop, Oop offsetOop, Oop sizeOop, Oop fileOop
+int OSIO::stWriteOffsetSizeTo(InterpreterProxy *interpreter)
 {
+    LODTALK_UNIMPLEMENTED();
+    /*
 	// Check the arguments.
 	if(!bufferOop.isIndexableNativeData() || !offsetOop.isSmallInteger() || !sizeOop.isSmallInteger() || !fileOop.isSmallInteger())
 		return Oop::encodeSmallInteger(-1);
-		
+
 	// Decode the arguments
 	auto buffer = reinterpret_cast<uint8_t *> (bufferOop.getFirstFieldPointer());
 	auto offset = offsetOop.decodeSmallInteger();
@@ -37,24 +44,20 @@ Oop OSIO::writeOffsetSizeTo(Oop clazz, Oop bufferOop, Oop offsetOop, Oop sizeOop
 	// Validate some of the arguments.
 	if(offset < 0)
 		return Oop::encodeSmallInteger(-1);
-	
+
 	// Perform the write
 	auto res = write(file, buffer + offset, size);
 	return Oop::encodeSmallInteger(res);
+    */
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(OSIO)
-	LODTALK_METHOD("stdout", OSIO::stStdout)
-	LODTALK_METHOD("stdin", OSIO::stStdin)
-	LODTALK_METHOD("stderr", OSIO::stStderr)
-	LODTALK_METHOD("write:offset:size:to:", OSIO::writeOffsetSizeTo)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(OSIO)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(OSIO, Object, OF_EMPTY, 0);
-
+NativeClassFactory OSIO::Factory("OSIO", &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addClassMethod("stdout", OSIO::stStdout)
+        .addClassMethod("stdin", OSIO::stStdout)
+        .addClassMethod("stderr", OSIO::stStdout)
+        .addClassMethod("write:offset:size:to:", OSIO::stWriteOffsetSizeTo);
+});
 }
 
 #endif

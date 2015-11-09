@@ -1,120 +1,87 @@
 #include <string.h>
 #include <map>
 #include <vector>
-#include "Collections.hpp"
+#include "Lodtalk/VMContext.hpp"
+#include "Lodtalk/Collections.hpp"
+#include "MemoryManager.hpp"
 #include "Method.hpp"
 
 namespace Lodtalk
 {
 // Collection
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Collection)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Collection)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Collection, Object, OF_EMPTY, 0);
+SpecialNativeClassFactory Collection::Factory("Collection", SCI_Collection, &Object::Factory, [](ClassBuilder &builder) {
+});
 
 // SequenceableCollection
-LODTALK_BEGIN_CLASS_SIDE_TABLE(SequenceableCollection)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(SequenceableCollection)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(SequenceableCollection, Collection, OF_EMPTY, 0);
+SpecialNativeClassFactory SequenceableCollection::Factory("SequenceableCollection", SCI_SequenceableCollection, &Collection::Factory, [](ClassBuilder &builder) {
+});
 
 // ArrayedCollection
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ArrayedCollection)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ArrayedCollection)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ArrayedCollection, SequenceableCollection, OF_EMPTY, 0);
+SpecialNativeClassFactory ArrayedCollection::Factory("ArrayedCollection", SCI_ArrayedCollection, &SequenceableCollection::Factory, [](ClassBuilder &builder) {
+});
 
 // Array
-Array *Array::basicNativeNew(size_t indexableSize)
+Array *Array::basicNativeNew(VMContext *context, size_t indexableSize)
 {
-	return reinterpret_cast<Array*> (newObject(0, indexableSize, OF_VARIABLE_SIZE_NO_IVARS, SCI_Array));
+	return reinterpret_cast<Array*> (context->newObject(0, indexableSize, OF_VARIABLE_SIZE_NO_IVARS, SCI_Array));
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Array)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Array)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Array, ArrayedCollection, OF_VARIABLE_SIZE_NO_IVARS, 0);
+SpecialNativeClassFactory Array::Factory("Array", SCI_Array, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableSizeWithoutInstanceVariables();
+});
 
 // ByteArray
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteArray)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ByteArray)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteArray, ArrayedCollection, OF_INDEXABLE_8, 0);
+SpecialNativeClassFactory ByteArray::Factory("ByteArray", SCI_ByteArray, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
 
 // FloatArray
-LODTALK_BEGIN_CLASS_SIDE_TABLE(FloatArray)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(FloatArray)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(FloatArray, ArrayedCollection, OF_INDEXABLE_32, 0);
+SpecialNativeClassFactory FloatArray::Factory("FloatArray", SCI_FloatArray, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits32();
+});
 
 // WordArray
-LODTALK_BEGIN_CLASS_SIDE_TABLE(WordArray)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(WordArray)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(WordArray, ArrayedCollection, OF_INDEXABLE_32, 0);
+SpecialNativeClassFactory WordArray::Factory("WordArray", SCI_WordArray, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits32();
+});
 
 // IntegerArray
-LODTALK_BEGIN_CLASS_SIDE_TABLE(IntegerArray)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(IntegerArray)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(IntegerArray, ArrayedCollection, OF_INDEXABLE_32, 0);
+SpecialNativeClassFactory IntegerArray::Factory("IntegerArray", SCI_IntegerArray, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits32();
+});
 
 // String
-LODTALK_BEGIN_CLASS_SIDE_TABLE(String)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(String)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(String, ArrayedCollection, OF_EMPTY, 0);
+SpecialNativeClassFactory String::Factory("String", SCI_String, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+});
 
 // ByteString
-ByteString *ByteString::basicNativeNew(size_t indexableSize)
+ByteString *ByteString::basicNativeNew(VMContext *context, size_t indexableSize)
 {
-	return reinterpret_cast<ByteString*> (newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteString));
+	return reinterpret_cast<ByteString*> (context->newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteString));
 }
 
-Ref<ByteString> ByteString::fromNative(const std::string &native)
+Ref<ByteString> ByteString::fromNative(VMContext *context, const std::string &native)
 {
-	auto result = basicNativeNew(native.size());
+	auto result = basicNativeNew(context, native.size());
 	memcpy(result->getFirstFieldPointer(), native.data(), native.size());
-	return Ref<ByteString> (reinterpret_cast<ByteString*> (result));
+	return Ref<ByteString> (context, reinterpret_cast<ByteString*> (result));
 }
 
-ByteString *ByteString::fromNativeRange(const char *start, size_t size)
+ByteString *ByteString::fromNativeRange(VMContext *context, const char *start, size_t size)
 {
-	auto result = basicNativeNew(size);
+	auto result = basicNativeNew(context, size);
 	memcpy(result->getFirstFieldPointer(), start, size);
 	return reinterpret_cast<ByteString*> (result);
 }
 
-ByteString *ByteString::fromNativeReverseRange(const char *start, ptrdiff_t size)
+ByteString *ByteString::fromNativeReverseRange(VMContext *context, const char *start, ptrdiff_t size)
 {
-    auto result = basicNativeNew(size);
+    auto result = basicNativeNew(context, size);
     auto dest = result->getFirstFieldPointer();
     for(ptrdiff_t i = 0; i < size; ++i)
         dest[i] = start[size - i - 1];
@@ -127,7 +94,7 @@ std::string ByteString::getString()
 	return std::string(begin, begin + getNumberOfElements());
 }
 
-Oop ByteString::splitVariableNames(const std::string &string)
+Oop ByteString::splitVariableNames(VMContext *context, const std::string &string)
 {
 	std::vector<std::pair<int, int>> varNameIndices;
 
@@ -160,11 +127,11 @@ Oop ByteString::splitVariableNames(const std::string &string)
 		varNameIndices.push_back(std::make_pair(tokenStart, size - tokenStart));
 
 	// Allocate the result.
-	Ref<Array> result = Array::basicNativeNew(varNameIndices.size());
+	Ref<Array> result(context, Array::basicNativeNew(context, varNameIndices.size()));
 	for(size_t i = 0; i < varNameIndices.size(); ++i)
 	{
 		auto &startSize = varNameIndices[i];
-		auto subString = ByteSymbol::fromNativeRange((char*)data + startSize.first, startSize.second);
+		auto subString = ByteSymbol::fromNativeRange(context, (char*)data + startSize.first, startSize.second);
 		auto resultData = reinterpret_cast<Oop*> (result->getFirstFieldPointer());
 		resultData[i] = subString;
 	}
@@ -172,158 +139,133 @@ Oop ByteString::splitVariableNames(const std::string &string)
 	return result.getOop();
 }
 
-Oop ByteString::stSplitVariableNames()
+int ByteString::stSplitVariableNames(InterpreterProxy *intepreter)
 {
-	return splitVariableNames(getString());
+    abort();
+
+    // TODO: Call return splitVariableNames(getString());
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteString)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory ByteString::Factory("ByteString", SCI_ByteString, &String::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
 
-LODTALK_BEGIN_CLASS_TABLE(ByteString)
-    LODTALK_METHOD("splitForVariableNames", &ByteString::stSplitVariableNames)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteString, String, OF_INDEXABLE_8, 0);
+    builder
+        .addMethod("splitForVariableNames", &ByteString::stSplitVariableNames);
+});
 
 // WideString
-LODTALK_BEGIN_CLASS_SIDE_TABLE(WideString)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(WideString)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(WideString, String, OF_INDEXABLE_32, 0);
+SpecialNativeClassFactory WideString::Factory("WideString", SCI_WideString, &ArrayedCollection::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits32();
+});
 
 // Symbol
+SpecialNativeClassFactory Symbol::Factory("Symbol", SCI_Symbol, &String::Factory, [](ClassBuilder &builder) {
+});
+
+// ByteSymbol
 std::string ByteSymbol::getString()
 {
 	auto begin = getFirstFieldPointer();
 	return std::string(begin, begin + getNumberOfElements());
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Symbol)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Symbol)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Symbol, String, OF_EMPTY, 0);
-
-// ByteSymbol
-LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteSymbol)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(ByteSymbol)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteSymbol, Symbol, OF_INDEXABLE_8, 0);
-
-typedef std::map<std::string, OopRef > ByteSymbolDictionary;
-static ByteSymbolDictionary *byteSymbolDictionary;
-
-Object *ByteSymbol::basicNativeNew(size_t indexableSize)
+Object *ByteSymbol::basicNativeNew(VMContext *context, size_t indexableSize)
 {
-	return reinterpret_cast<Object*> (newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteSymbol));
+	return reinterpret_cast<Object*> (context->newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteSymbol));
 }
 
-Oop ByteSymbol::fromNative(const std::string &native)
+Oop ByteSymbol::fromNative(VMContext *context, const std::string &native)
 {
-	if(!byteSymbolDictionary)
-		byteSymbolDictionary = new ByteSymbolDictionary();
-
 	// Find existing internation
-	auto it = byteSymbolDictionary->find(native);
-	if(it != byteSymbolDictionary->end())
-		return it->second.oop;
+    auto &dict = context->getMemoryManager()->getSymbolDictionary();
+	auto it = dict.find(native);
+	if(it != dict.end())
+		return it->second;
 
 	// Create the byte symbol
-	auto result = basicNativeNew(native.size());
+	auto result = basicNativeNew(context, native.size());
 	memcpy(result->getFirstFieldPointer(), native.data(), native.size());
 
 	// Store in the internation dictionary.
     auto resultOop = Oop::fromPointer(result);
-	(*byteSymbolDictionary)[native] = resultOop;
+	dict[native] = resultOop;
 	return resultOop;
 }
 
-Oop ByteSymbol::fromNativeRange(const char *start, size_t size)
+Oop ByteSymbol::fromNativeRange(VMContext *context, const char *start, size_t size)
 {
-	return fromNative(std::string(start, start + size));
+	return fromNative(context, std::string(start, start + size));
 }
 
+SpecialNativeClassFactory ByteSymbol::Factory("ByteSymbol", SCI_ByteSymbol, &Symbol::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
+
 // WideSymbol
-LODTALK_BEGIN_CLASS_SIDE_TABLE(WideSymbol)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(WideSymbol)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(WideSymbol, Symbol, OF_INDEXABLE_32, 0);
+SpecialNativeClassFactory WideSymbol::Factory("WideSymbol", SCI_WideSymbol, &Symbol::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits32();
+});
 
 // HashedCollection
-LODTALK_BEGIN_CLASS_SIDE_TABLE(HashedCollection)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(HashedCollection)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(HashedCollection, Collection, OF_FIXED_SIZE, 3,
-"capacity tally keyValues");
+SpecialNativeClassFactory HashedCollection::Factory("HashedCollection", SCI_HashedCollection, &Collection::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("capacity", "tally", "keyValues");
+});
 
 // Dictionary
-LODTALK_BEGIN_CLASS_SIDE_TABLE(Dictionary)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(Dictionary)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Dictionary, HashedCollection, OF_FIXED_SIZE, 3);
+SpecialNativeClassFactory Dictionary::Factory("Dictionary", SCI_Dictionary, &HashedCollection::Factory, [](ClassBuilder &builder) {
+});
 
 // MethodDictionary
-MethodDictionary* MethodDictionary::basicNativeNew()
+MethodDictionary* MethodDictionary::basicNativeNew(VMContext *context)
 {
-	auto res = reinterpret_cast<MethodDictionary*> (newObject(4, 0, OF_FIXED_SIZE, SCI_MethodDictionary));
+	auto res = reinterpret_cast<MethodDictionary*> (context->newObject(4, 0, OF_FIXED_SIZE, SCI_MethodDictionary));
 	res->capacityObject = Oop::encodeSmallInteger(0);
 	res->tallyObject = Oop::encodeSmallInteger(0);
 	return res;
 }
 
-LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodDictionary)
-LODTALK_END_CLASS_SIDE_TABLE()
+SpecialNativeClassFactory MethodDictionary::Factory("MethodDictionary", SCI_MethodDictionary, &Dictionary::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("values");
 
-LODTALK_BEGIN_CLASS_TABLE(MethodDictionary)
-    LODTALK_METHOD("atOrNil:", &MethodDictionary::atOrNil)
-    LODTALK_METHOD("at:put:", &MethodDictionary::atPut)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(MethodDictionary, Dictionary, OF_FIXED_SIZE, 4,
-"values");
+    builder
+        .addMethod("atOrNil:", +[](InterpreterProxy *proxy) {
+            abort();
+            return 0;
+        })
+        .addMethod("at:put:", +[](InterpreterProxy *proxy) {
+            abort();
+            return 0;
+        });
+});
 
 // IdentityDictionary
-LODTALK_BEGIN_CLASS_SIDE_TABLE(IdentityDictionary)
-LODTALK_END_CLASS_SIDE_TABLE()
-
-LODTALK_BEGIN_CLASS_TABLE(IdentityDictionary)
-    LODTALK_METHOD("putAssociation:", &IdentityDictionary::putAssociation)
-    LODTALK_METHOD("associationAtOrNil:", &IdentityDictionary::getAssociationOrNil)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(IdentityDictionary, Dictionary, OF_FIXED_SIZE, 3);
+SpecialNativeClassFactory IdentityDictionary::Factory("IdentityDictionary", SCI_IdentityDictionary, &Dictionary::Factory, [](ClassBuilder &builder) {
+    builder
+        .addMethod("putAssociation:", +[](InterpreterProxy *proxy) {
+            abort();
+            return 0;
+        })
+        .addMethod("associationAtOrNil:", +[](InterpreterProxy *proxy) {
+            abort();
+            return 0;
+        });
+});
 
 // SystemDictionary
-SystemDictionary *SystemDictionary::create()
+SystemDictionary *SystemDictionary::create(VMContext *context)
 {
-    auto res = reinterpret_cast<SystemDictionary*> (newObject(3, 0, OF_FIXED_SIZE, SCI_SystemDictionary));
+    auto res = reinterpret_cast<SystemDictionary*> (context->newObject(3, 0, OF_FIXED_SIZE, SCI_SystemDictionary));
     res->initialize();
     return res;
 }
-LODTALK_BEGIN_CLASS_SIDE_TABLE(SystemDictionary)
-LODTALK_END_CLASS_SIDE_TABLE()
 
-LODTALK_BEGIN_CLASS_TABLE(SystemDictionary)
-LODTALK_END_CLASS_TABLE()
-
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(SystemDictionary, IdentityDictionary, OF_FIXED_SIZE, 3);
+SpecialNativeClassFactory SystemDictionary::Factory("SystemDictionary", SCI_SystemDictionary, &IdentityDictionary::Factory, [](ClassBuilder &builder) {
+});
 
 } // End of namespace Lodtalk

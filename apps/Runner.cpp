@@ -8,16 +8,18 @@ VMContext *context = nullptr;
 
 void printHelp()
 {
+    printf("LodtalkRunner\n");
 }
 
 void loadKernel()
 {
-    context->executeScriptFromFileNamed("runtime/runtime.lodtalk");
+    //context->executeScriptFromFileNamed("runtime/runtime.lodtalk");
 }
 
 int main(int argc, const char *argv[])
 {
     context = createVMContext();
+
     std::string scriptFilename;
 
     for(int i = 1; i < argc; ++i)
@@ -56,7 +58,7 @@ int main(int argc, const char *argv[])
     }
 
     // Call the main function.
-    auto globalContext = getGlobalContext();
-    sendMessageOopArgs(globalContext, makeSelector("main"));
+    //auto globalContext = getGlobalContext();
+    //sendMessageOopArgs(globalContext, makeSelector("main"));
     return 0;
 }

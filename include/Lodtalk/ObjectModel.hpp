@@ -17,6 +17,7 @@
 namespace Lodtalk
 {
 class VMContext;
+LODTALK_VM_EXPORT VMContext *getCurrentContext();
 
 // Object constants
 struct ObjectTag
@@ -139,6 +140,11 @@ enum class SpecialMessageSelector
     NewArray,
     X,
     Y,
+    BasicNew,
+    BasicNewSize,
+
+    // Does not understand
+    DoesNotUnderstand,
 
     SpecialMessageCount,
     FirstArithmeticMessage = Add,
@@ -422,13 +428,13 @@ public:
 		return pointer + sizeof(ObjectHeader);
 	}
 
-    void *getFirstIndexableFieldPointer() const
+    void *getFirstIndexableFieldPointer(VMContext *context) const
 	{
 		if(!isPointer())
 			return nullptr;
 		if(header->slotCount == 255)
 			return pointer + sizeof(ObjectHeader) + 8;
-		return pointer + sizeof(ObjectHeader) + getFixedSlotCount()*sizeof(void*);
+		return pointer + sizeof(ObjectHeader) + getFixedSlotCount(context)*sizeof(void*);
 	}
 
 	inline SmallIntegerValue decodeSmallInteger() const
@@ -504,7 +510,7 @@ public:
 		return variableSlotSizeFor((ObjectFormat)header->objectFormat) != 0;
 	}
 
-    size_t getFixedSlotCount() const;
+    size_t getFixedSlotCount(VMContext *context) const;
 
 	inline size_t getNumberOfElements() const
 	{
@@ -514,11 +520,7 @@ public:
 			return 0;
 
 		if(format < OF_INDEXABLE_64)
-        {
-            if(format == OF_VARIABLE_SIZE_IVARS)
-                return slotCount - getFixedSlotCount();
 			return slotCount;
-        }
 
 		if(format >= OF_INDEXABLE_8)
 		{
@@ -532,6 +534,14 @@ public:
 
 		LODTALK_UNIMPLEMENTED();
 		abort();
+	}
+
+    inline size_t getNumberOfVariableElements(VMContext *context) const
+	{
+        auto result = getNumberOfElements();
+        if(header->objectFormat == OF_VARIABLE_SIZE_IVARS)
+            return result - getFixedSlotCount(context);
+        return result;
 	}
 
 	union
@@ -626,10 +636,6 @@ struct CompiledMethodHeader
 	Oop oop;
 };
 
-// Object memory
-uint8_t *allocateObjectMemory(size_t objectSize);
-ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectFormat format, int classIndex, int identityHash = -1);
-
 /**
  * Object header when the slot count is greater or equal to 255.
  */
@@ -653,6 +659,7 @@ enum SpecialClassesIndex
 	SMCI_ ## className,
 #include "Lodtalk/SpecialClasses.inc"
 #undef SPECIAL_CLASS_NAME
+    SpecialClassTableSize
 };
 
 class ClassDescription;
@@ -697,18 +704,31 @@ class OopRef
 {
 public:
 	OopRef()
+        : context_(getCurrentContext())
 	{
 		registerSelf();
 	}
 
 	OopRef(const Oop &object)
-		: oop(object)
+		: oop(object), context_(getCurrentContext())
+	{
+		registerSelf();
+	}
+
+    OopRef(VMContext *context)
+		: context_(context)
+	{
+		registerSelf();
+	}
+
+    OopRef(VMContext *context, const Oop &object)
+		: oop(object), context_(context)
 	{
 		registerSelf();
 	}
 
 	OopRef(const OopRef &ref)
-		: oop(ref.oop)
+		: oop(ref.oop), context_(ref.context_)
 	{
 		registerSelf();
 	}
@@ -774,6 +794,7 @@ private:
 	void unregisterSelf();
 
 	// This is used by the GC
+    VMContext *context_;
 	OopRef* prevReference_;
 	OopRef* nextReference_;
 };
@@ -799,6 +820,17 @@ public:
 		reset(p);
 	}
 
+    Ref(VMContext *context)
+        : reference(context)
+	{
+	}
+
+    Ref(VMContext *context, T* p)
+        : reference(context)
+	{
+		reset(p);
+	}
+
 	static Ref<T> fromOop(Oop oop)
 	{
 		Ref<T> result;
@@ -809,6 +841,11 @@ public:
 	void reset(T *pointer=(T*)&NilObject)
 	{
 		internalSet(pointer);
+	}
+
+    void reset(VMContext *context, T *pointer=(T*)&NilObject)
+	{
+		internalSet(context, pointer);
 	}
 
 	T *operator->() const
@@ -874,101 +911,6 @@ template<typename T>
 Ref<T> makeRef(T *pointer)
 {
 	return Ref<T> (pointer);
-}
-
-// Some object creation / accessing
-int64_t readIntegerObject(const Ref<Oop> &ref);
-double readDoubleObject(const Ref<Oop> &ref);
-
-Oop positiveInt32ObjectFor(uint32_t value);
-Oop positiveInt64ObjectFor(uint64_t value);
-
-Oop signedInt32ObjectFor(int32_t value);
-Oop signedInt64ObjectFor(int64_t value);
-
-uint32_t positiveInt32ValueOf(Oop object);
-uint64_t positiveInt64ValueOf(Oop object);
-
-Oop floatObjectFor(double value);
-double floatValueOf(Oop object);
-
-// Class table
-Oop getClassFromIndex(int classIndex);
-Oop getClassFromOop(Oop oop);
-void registerClassInTable(Oop clazz);
-
-bool isClassOrMetaclass(Oop oop);
-bool isMetaclass(Oop oop);
-bool isClass(Oop oop);
-
-// Message send
-Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
-Oop lookupMessage(Oop receiver, Oop selector);
-Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
-
-Oop makeByteString(const std::string &content);
-Oop makeByteSymbol(const std::string &content);
-Oop makeSelector(const std::string &content);
-
-Oop sendBasicNew(Oop clazz);
-Oop sendBasicNewWithSize(Oop clazz, size_t size);
-
-// Garbage collection interface
-void disableGC();
-void enableGC();
-
-void registerGCRoot(Oop *gcroot, size_t size);
-void unregisterGCRoot(Oop *gcroot);
-
-void registerNativeObject(Oop object);
-
-class WithoutGC
-{
-public:
-    WithoutGC()
-    {
-        disableGC();
-    }
-
-    ~WithoutGC()
-    {
-        enableGC();
-    }
-};
-
-// Global variables
-Oop setGlobalVariable(const char *name, Oop value);
-Oop setGlobalVariable(Oop name, Oop value);
-
-Oop getGlobalFromName(const char *name);
-Oop getGlobalFromSymbol(Oop symbol);
-
-Oop getGlobalValueFromName(const char *name);
-Oop getGlobalValueFromSymbol(Oop symbol);
-
-// Global context.
-Oop getGlobalContext();
-
-// Object reading
-std::string getClassNameOfObject(Oop object);
-std::string getByteSymbolData(Oop object);
-std::string getByteStringData(Oop object);
-
-// Other special objects.
-Oop getBlockActivationSelector(size_t argumentCount);
-Oop getSpecialMessageSelector(SpecialMessageSelector selectorIndex);
-Oop getCompilerOptimizedSelector(CompilerOptimizedSelector selectorIndex);
-CompilerOptimizedSelector getCompilerOptimizedSelectorId(Oop selector);
-
-// Message sending
-template<typename... Args>
-Oop sendMessageOopArgs(Oop receiver, Oop selector, Args... args)
-{
-	Oop argArray[] = {
-		args...,
-        Oop()
-	};
-	return sendMessage(receiver, selector, sizeof...(args), argArray);
 }
 
 } // End of namespace Lodtalk

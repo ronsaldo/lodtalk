@@ -10,12 +10,13 @@ set(Lodtalk_SRC
      AST.hpp
      BytecodeSets.cpp
      BytecodeSets.hpp
+     ClassBuilder.cpp
+     ClassFactoryRegistry.cpp
+     ClassFactoryRegistry.hpp
      Collections.cpp
-     Collections.hpp
      Compiler.cpp
      Compiler.hpp
      Exception.cpp
-     Exception.hpp
      FileSystem.cpp
      FileSystem.hpp
      InputOutput_unix.cpp
@@ -29,7 +30,6 @@ set(Lodtalk_SRC
      MethodBuilder.hpp
      MPL.hpp
      Object.cpp
-     Object.hpp
      ObjectModel.cpp
      Parser.y
      ParserScannerInterface.cpp
@@ -37,11 +37,12 @@ set(Lodtalk_SRC
      RAII.hpp
      Scanner.l
      SistaV1BytecodeSet.inc
+     SpecialRuntimeObjects.cpp
+     SpecialRuntimeObjects.hpp
      StackInterpreter.cpp
      StackInterpreter.hpp
      StackMemory.cpp
      StackMemory.hpp
-     Synchronization.hpp
      VMContext.cpp
      ${BISON_LodtalkParser_OUTPUTS}
      ${FLEX_LodtalkScanner_OUTPUTS}

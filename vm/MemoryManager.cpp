@@ -9,6 +9,8 @@
 #include <sys/mman.h>
 #endif
 
+#include "Lodtalk/VMContext.hpp"
+
 #include <algorithm>
 #include <string.h>
 #include "Method.hpp"
@@ -28,14 +30,6 @@ ClassTable::~ClassTable()
         delete [] page;
 }
 
-ClassTable *ClassTable::uniqueInstance = nullptr;
-ClassTable *ClassTable::get()
-{
-    if(!uniqueInstance)
-        uniqueInstance = new ClassTable();
-    return uniqueInstance;
-}
-
 ClassDescription *ClassTable::getClassFromIndex(size_t index)
 {
     ReadLock<SharedMutex> l(sharedMutex);
@@ -47,7 +41,7 @@ ClassDescription *ClassTable::getClassFromIndex(size_t index)
     return reinterpret_cast<ClassDescription*> (pageTable[pageIndex][elementIndex].pointer);
 }
 
-void ClassTable::registerClass(Oop clazz)
+unsigned int ClassTable::registerClass(Oop clazz)
 {
     WriteLock<SharedMutex> l(sharedMutex);
     auto pageIndex = size / OopsPerPage;
@@ -57,7 +51,7 @@ void ClassTable::registerClass(Oop clazz)
 
     pageTable[pageIndex][elementIndex] = clazz;
     clazz.header->identityHash = (unsigned int)size;
-    ++size;
+    return size++;
 }
 
 void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
@@ -71,6 +65,16 @@ void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
 
     pageTable[pageIndex][elementIndex] = Oop::fromPointer(description);
     size = std::max(size, index + 1);
+    description->object_header_.identityHash = (unsigned int)index;
+}
+
+void ClassTable::setClassAtIndex(ClassDescription *description, size_t index)
+{
+    WriteLock<SharedMutex> l(sharedMutex);
+    assert(index < size);
+    auto pageIndex = index / OopsPerPage;
+    auto elementIndex = index % OopsPerPage;
+    pageTable[pageIndex][elementIndex] = Oop::fromPointer(description);
 }
 
 void ClassTable::allocatePage()
@@ -229,34 +233,8 @@ uint8_t *VMHeap::allocate(size_t objectSize)
     return result;
 }
 
-VMHeap *VMHeap::uniqueInstance = nullptr;
-
-VMHeap *VMHeap::get()
-{
-    if(!uniqueInstance)
-    {
-        uniqueInstance = new VMHeap();
-        uniqueInstance->initialize();
-    }
-
-    return uniqueInstance;
-}
-
-// The garbage collector
-static GarbageCollector *theGarbageCollector = nullptr;
-
-GarbageCollector *getGC()
-{
-	if(!theGarbageCollector)
-    {
-		theGarbageCollector = new GarbageCollector();
-        theGarbageCollector->initialize();
-    }
-	return theGarbageCollector;
-}
-
-GarbageCollector::GarbageCollector()
-	: firstReference(nullptr), lastReference(nullptr), disableCount(0)
+GarbageCollector::GarbageCollector(MemoryManager *memoryManager)
+	: memoryManager(memoryManager), firstReference(nullptr), lastReference(nullptr), disableCount(0)
 {
 }
 
@@ -266,7 +244,6 @@ GarbageCollector::~GarbageCollector()
 
 void GarbageCollector::initialize()
 {
-    registerRuntimeGCRoots();
 }
 
 void GarbageCollector::enable()
@@ -290,7 +267,7 @@ uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
     objectSize += sizeof(void*);
 
 	// Allocate from the VM heap.
-    auto result = VMHeap::get()->allocate(objectSize);
+    auto result = memoryManager->getHeap()->allocate(objectSize);
     result += sizeof(void*);
 
 	auto header = reinterpret_cast<ObjectHeader*> (result);
@@ -365,7 +342,7 @@ void GarbageCollector::performCollection()
         return;
 
 	// Get the current stacks
-	currentStacks = getAllStackMemories();
+	currentStacks = memoryManager->getStackMemories()->getAll();
 
 	// TODO: Suspend the other GC threads.
 	mark();
@@ -433,7 +410,7 @@ void GarbageCollector::markObject(Oop objectPointer)
 
 void GarbageCollector::compact()
 {
-    auto heap = VMHeap::get();
+    auto heap = memoryManager->getHeap();
     auto lowestAddress = heap->getAddressSpace();
     auto endAddress = lowestAddress + heap->getSize();
 
@@ -456,7 +433,7 @@ void GarbageCollector::compact()
         }
         else
         {
-            //printf("Free %s\n", getClassNameOfObject(Oop::fromPointer(&liveHeader->header)).c_str());
+            //printf("Free %s\n", memoryManager->getContext()->getClassNameOfObject(Oop::fromPointer(&liveHeader->header)).c_str());
             liveHeader->forwardingPointer = nullptr;
             ++freeCount;
         }
@@ -541,7 +518,7 @@ void GarbageCollector::compact()
 
 void GarbageCollector::abortCompaction()
 {
-    auto heap = VMHeap::get();
+    auto heap = memoryManager->getHeap();
     auto lowestAddress = heap->getAddressSpace();
     auto endAddress = lowestAddress + heap->getSize();
 
@@ -578,7 +555,7 @@ void GarbageCollector::updatePointer(Oop *pointer)
     }
 
     // Is this object in the heap?
-    auto heap = VMHeap::get();
+    auto heap = memoryManager->getHeap();
     if(!heap->containsPointer(pointer->pointer))
         return;
 
@@ -630,42 +607,60 @@ void GarbageCollector::updatePointersOf(Oop object)
 // OopRef
 void OopRef::registerSelf()
 {
-	getGC()->registerOopReference(this);
+	context_->getMemoryManager()->getGarbageCollector()->registerOopReference(this);
 }
 
 void OopRef::unregisterSelf()
 {
-	getGC()->unregisterOopReference(this);
+	context_->getMemoryManager()->getGarbageCollector()->unregisterOopReference(this);
 }
 
-// GC collector public interface
-void disableGC()
+/**
+ * Memory manager
+ */
+MemoryManager::MemoryManager(VMContext *context)
+    : context(context)
 {
-    getGC()->disable();
+    heap = new VMHeap();
+    heap->initialize();
+
+    classTable = new ClassTable();
+    stackMemories = new StackMemories();
+    garbageCollector = new GarbageCollector(this);
 }
 
-void enableGC()
+MemoryManager::~MemoryManager()
 {
-    getGC()->enable();
 }
 
-void registerGCRoot(Oop *gcroot, size_t size)
+VMContext *MemoryManager::getContext()
 {
-	getGC()->registerGCRoot(gcroot, size);
+    return context;
 }
 
-void unregisterGCRoot(Oop *gcroot)
+VMHeap *MemoryManager::getHeap()
 {
-	getGC()->unregisterGCRoot(gcroot);
+    return heap;
 }
 
-void registerNativeObject(Oop object)
+ClassTable *MemoryManager::getClassTable()
 {
-    getGC()->registerNativeObject(object);
+    return classTable;
 }
 
-uint8_t *allocateObjectMemory(size_t objectSize)
+GarbageCollector *MemoryManager::getGarbageCollector()
 {
-	return getGC()->allocateObjectMemory(objectSize);
+    return garbageCollector;
 }
+
+StackMemories *MemoryManager::getStackMemories()
+{
+    return stackMemories;
+}
+
+MemoryManager::SymbolDictionary &MemoryManager::getSymbolDictionary()
+{
+    return symbolDictionary;
+}
+
 }

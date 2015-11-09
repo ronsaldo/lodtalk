@@ -2,10 +2,13 @@
 #define LODTALK_CLASS_FACTORY_HPP
 
 #include <functional>
-#include "Lodtalk/ClassBuilder.hpp"
+#include "Lodtalk/Definitions.h"
 
 namespace Lodtalk
 {
+class ClassBuilder;
+class InterpreterProxy;
+
 /**
  * Abstract class factory
  */
@@ -14,6 +17,8 @@ class AbstractClassFactory
 public:
     virtual int getSpecialClassIndex() const = 0;
 
+    virtual AbstractClassFactory *getSuperClass() const = 0;
+
     virtual const char *getName() const = 0;
     virtual void build(ClassBuilder &builder) = 0;
 };
@@ -21,12 +26,12 @@ public:
 /**
  * Registers a global class factory.
  */
-void registerClassFactory(AbstractClassFactory *factory);
+LODTALK_VM_EXPORT void registerClassFactory(AbstractClassFactory *factory);
 
 /**
  * Unregisters a global class factory.
  */
-void unregisterClassFactory(AbstractClassFactory *factory);
+LODTALK_VM_EXPORT void unregisterClassFactory(AbstractClassFactory *factory);
 
 /**
  * Native class factory.
@@ -36,8 +41,8 @@ class NativeClassFactory: public AbstractClassFactory
 public:
     typedef std::function<void (ClassBuilder &builder)> BuildFunction;
 
-    NativeClassFactory(AbstractClassFactory *superClass, const BuildFunction &buildFunction)
-        : superClass(superClass), buildFunction(buildFunction)
+    NativeClassFactory(const char *name, AbstractClassFactory *superClass, const BuildFunction &buildFunction)
+        : name(name), superClass(superClass), buildFunction(buildFunction)
     {
         registerClassFactory(this);
     }
@@ -57,12 +62,18 @@ public:
         return name;
     }
 
+    virtual AbstractClassFactory *getSuperClass() const
+    {
+        return superClass;
+    }
+
     virtual void build(ClassBuilder &builder) override
     {
         buildFunction(builder);
     }
 
 private:
+    const char *name;
     AbstractClassFactory *superClass;
     BuildFunction buildFunction;
 };
@@ -73,8 +84,8 @@ private:
 class SpecialNativeClassFactory: public NativeClassFactory
 {
 public:
-    SpecialNativeClassFactory(int specialClassIndex, AbstractClassFactory *superClass, const BuildFunction &buildFunction)
-        : NativeClassFactory(superClass, buildFunction), specialClassIndex(specialClassIndex)
+    SpecialNativeClassFactory(const char *name, int specialClassIndex, AbstractClassFactory *superClass, const BuildFunction &buildFunction)
+        : NativeClassFactory(name, superClass, buildFunction), specialClassIndex(specialClassIndex)
     {}
 
     virtual int getSpecialClassIndex() const override

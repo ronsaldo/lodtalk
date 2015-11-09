@@ -3,7 +3,8 @@
 
 #include <vector>
 #include <functional>
-#include "Object.hpp"
+#include <mutex>
+#include "Lodtalk/Object.hpp"
 
 namespace Lodtalk
 {
@@ -45,8 +46,8 @@ inline void decodeFrameMetaData(uintptr_t metadata, bool &hasContext, bool &isBl
  */
 class StackMemoryCommitedPage: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -145,7 +146,7 @@ public:
 			f(*pos);
 	}
 
-    void marryFrame();
+    void marryFrame(VMContext *context);
 
     inline int getArgumentCount()
     {
@@ -162,10 +163,10 @@ public:
         return getMetadata() & 0xFF000;
     }
 
-    inline void ensureFrameIsMarried()
+    inline void ensureFrameIsMarried(VMContext *context)
     {
         if(!hasContext())
-            marryFrame();
+            marryFrame(context);
     }
 
 	uint8_t *framePointer;
@@ -178,8 +179,13 @@ public:
 class StackMemory
 {
 public:
-	StackMemory();
+	StackMemory(VMContext *context);
 	~StackMemory();
+
+    VMContext *getContext()
+    {
+        return context;
+    }
 
 	void setStorage(uint8_t *storage, size_t storageSize);
 
@@ -223,12 +229,12 @@ public:
 		return *reinterpret_cast<uint8_t**> (stackFrame.stackPointer + offset);
 	}
 
-	inline Oop stackOopAtOffset(size_t offset)
+	inline Oop &stackOopAtOffset(size_t offset)
 	{
 		return stackFrame.stackOopAtOffset(offset);
 	}
 
-	inline Oop stackTop()
+	inline Oop &stackTop()
 	{
 		return stackFrame.stackTop();
 	}
@@ -294,19 +300,34 @@ public:
 		return stackFrame;
 	}
 
+    inline int getArgumentCount()
+    {
+        return stackFrame.getArgumentCount();
+    }
+
 	inline CompiledMethod *getMethod()
 	{
 		return stackFrame.getMethod();
 	}
 
-	inline Oop getReceiver()
+	inline const Oop &getReceiver()
 	{
 		return stackFrame.getReceiver();
 	}
 
-	inline Oop getThisContext()
+    inline Oop &receiver()
+	{
+		return stackFrame.receiver();
+	}
+
+	inline const Oop &getThisContext()
 	{
 		return stackFrame.getThisContext();
+	}
+
+    inline Oop &thisContext()
+	{
+		return stackFrame.thisContext();
 	}
 
 	inline uintptr_t getMetadata()
@@ -316,7 +337,7 @@ public:
 
     void ensureFrameIsMarried()
     {
-        stackFrame.ensureFrameIsMarried();
+        stackFrame.ensureFrameIsMarried(context);
     }
 
 	template<typename FT>
@@ -330,7 +351,9 @@ public:
 			currentFrame = currentFrame.getPreviousFrame();
 		}
 	}
+
 private:
+    VMContext *context;
 	uint8_t *stackPageLowest;
 	uint8_t *stackPageHighest;
 	size_t stackPageSize;
@@ -339,11 +362,43 @@ private:
 
 };
 
+// Stack memories interface used by the GC
+class StackMemories
+{
+public:
+	std::vector<StackMemory*> getAll()
+	{
+		std::unique_lock<std::mutex> l(mutex);
+		return memories;
+	}
+
+	void registerMemory(StackMemory* memory)
+	{
+		std::unique_lock<std::mutex> l(mutex);
+		memories.push_back(memory);
+	}
+
+	void unregisterMemory(StackMemory* memory)
+	{
+		std::unique_lock<std::mutex> l(mutex);
+		for(size_t i = 0; i < memories.size(); ++i)
+		{
+			if(memories[i] == memory)
+			{
+				memories.erase(memories.begin() + i);
+				return;
+			}
+		}
+	}
+
+private:
+	std::mutex mutex;
+	std::vector<StackMemory*> memories;
+};
+
 typedef std::function<void (StackMemory*) > StackMemoryEntry;
 
-void withStackMemory(const StackMemoryEntry &entryPoint);
-std::vector<StackMemory*> getAllStackMemories();
-StackMemory *getCurrentStackMemory();
+void withStackMemory(VMContext *context, const StackMemoryEntry &entryPoint);
 
 } // End of namespace Lodtalk
 

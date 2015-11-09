@@ -5,6 +5,7 @@
 #include <vector>
 #include <utility>
 #include <mutex>
+#include <unordered_map>
 
 #include "Lodtalk/ObjectModel.hpp"
 #include "Constants.hpp"
@@ -19,24 +20,52 @@ static constexpr size_t DefaultMaxVMHeapSize = size_t(16)*1024*1024*1024; // 16 
 static constexpr size_t DefaultMaxVMHeapSize = size_t(512)*1024*1024; // 512 MB
 #endif
 
+class VMHeap;
+class ClassTable;
+class GarbageCollector;
+class StackMemories;
+
+class MemoryManager
+{
+public:
+    typedef std::unordered_map<std::string, Oop> SymbolDictionary;
+
+    MemoryManager(VMContext *context);
+    ~MemoryManager();
+
+    VMContext *getContext();
+    VMHeap *getHeap();
+    ClassTable *getClassTable();
+    GarbageCollector *getGarbageCollector();
+    StackMemories *getStackMemories();
+    SymbolDictionary &getSymbolDictionary();
+
+private:
+    VMContext *context;
+    VMHeap *heap;
+    ClassTable *classTable;
+    GarbageCollector *garbageCollector;
+    StackMemories *stackMemories;
+    SymbolDictionary symbolDictionary;
+};
+
+
 /**
  * The class table
  */
 class ClassTable
 {
 public:
+    ClassTable();
     ~ClassTable();
 
     ClassDescription *getClassFromIndex(size_t index);
 
-    void registerClass(Oop clazz);
+    unsigned int registerClass(Oop clazz);
     void addSpecialClass(ClassDescription *description, size_t index);
-
-    static ClassTable *get();
+    void setClassAtIndex(ClassDescription *description, size_t index);
 
 private:
-    ClassTable();
-
     void allocatePage();
 
     static ClassTable *uniqueInstance;
@@ -54,7 +83,10 @@ private:
 class VMHeap
 {
 public:
+    VMHeap();
     ~VMHeap();
+
+    void initialize();
 
     size_t getMaxCapacity();
     size_t getCapacity();
@@ -66,16 +98,14 @@ public:
 
     uint8_t *allocate(size_t size);
 
-    static VMHeap *get();
-
     inline bool containsPointer(uint8_t *pointer)
     {
         return getAddressSpace() <= pointer && pointer < getAddressSpaceEnd();
     }
 
 private:
-    VMHeap();
-    void initialize();
+
+
 
     std::mutex mutex;
     uint8_t *addressSpace;
@@ -83,11 +113,7 @@ private:
     size_t capacity;
     size_t size;
     size_t pageSize;
-
-    static VMHeap *uniqueInstance;
 };
-
-VMHeap *getVMHeap();
 
 /**
  * The garbage collector.
@@ -102,7 +128,7 @@ public:
 		Black,
 	};
 
-	GarbageCollector();
+	GarbageCollector(MemoryManager *memoryManager);
 	~GarbageCollector();
 
     void initialize();
@@ -137,7 +163,7 @@ private:
 		}
 
         // Traverse the classTable
-        auto classTable = ClassTable::get();
+        auto classTable = memoryManager->getClassTable();
         for(auto &classTablePage : classTable->pageTable)
         {
             for(size_t i = 0; i < OopsPerPage; ++i)
@@ -158,6 +184,14 @@ private:
 		{
 			f(pos->oop);
 		}
+
+        // Traverse the symbol dictionary.
+        {
+            auto &symbolDict = memoryManager->getSymbolDictionary();
+            auto it = symbolDict.begin();
+            for(; it != symbolDict.end(); ++it)
+                f(it->second);
+        }
 	}
 
 	void mark();
@@ -167,7 +201,7 @@ private:
 	void compact();
     void abortCompaction();
 
-
+    MemoryManager *memoryManager;
 	std::mutex controlMutex;
 	std::vector<std::pair<Oop*, size_t>> rootPointers;
     std::vector<Oop> nativeObjects;
@@ -176,9 +210,6 @@ private:
 	OopRef *lastReference;
     int disableCount;
 };
-
-GarbageCollector *getGC();
-void registerRuntimeGCRoots();
 
 } // End of namespace Lodtalk
 

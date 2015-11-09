@@ -12,8 +12,8 @@ typedef void *yyscan_t;
 
 #include "ParserScannerInterface.hpp"
 #include "Parser.hpp"
-#include "Object.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 
 #include <string>
 #include <string.h>
@@ -110,7 +110,7 @@ sourceFileStatement: statement  { $$ = $1; }
                    | unaryMessage IDENTIFIER LBRACKET method RBRACKET  { $$ = new MessageSendNode(readStringValue($2) + ":", $1, $4); }
                    ;
 
-method: methodHeader methodPragmas blockContent { $$ = new MethodAST($1, $2, $3); }
+method: methodHeader methodPragmas blockContent { $$ = new MethodAST(extraData->context, $1, $2, $3); }
       ;
 
 methodHeader: IDENTIFIER                    { $$ = new MethodHeader(readStringValue($1)); }
@@ -234,11 +234,11 @@ specialIdentifiers: KSELF           { $$ = new SelfReference(); }
                   | KTHIS_CONTEXT   { $$ = new ThisContextReference(); }
                   ;
 
-literal: INTEGER    { $$ = new LiteralNode(signedInt64ObjectFor($1)); }
-    | REAL          { $$ = new LiteralNode(floatObjectFor($1)); }
-    | STRING        { $$ = new LiteralNode(ByteString::fromNative(readStringValue($1)).getOop()); }
+literal: INTEGER    { $$ = new LiteralNode(extraData->context->signedInt64ObjectFor($1)); }
+    | REAL          { $$ = new LiteralNode(extraData->context->floatObjectFor($1)); }
+    | STRING        { $$ = new LiteralNode(ByteString::fromNative(extraData->context, readStringValue($1)).getOop()); }
     | CHARACTER     { $$ = new LiteralNode(Oop::encodeCharacter($1)); }
-    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(readStringValue($1))); }
+    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(extraData->context, readStringValue($1))); }
     ;
 
 binarySelector: BINARY_SELECTOR { $$ = $1; }

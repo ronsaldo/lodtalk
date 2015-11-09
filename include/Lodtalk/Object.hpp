@@ -2,16 +2,11 @@
 #define LODTALK_OBJECT_HPP
 
 #include <stdio.h>
+#include "Lodtalk/ClassFactory.hpp"
 #include "Lodtalk/ObjectModel.hpp"
 
 namespace Lodtalk
 {
-
-#define LODTALK_NATIVE_CLASS() \
-public: \
-	static ClassDescription * ClassObject; \
-	static ClassDescription * MetaclassObject; \
-
 
 class ClassDescription;
 class MethodDictionary;
@@ -25,18 +20,12 @@ typedef MethodDictionary *(*MethodDictionaryBuilder)();
  */
 class ProtoObject
 {
-	LODTALK_NATIVE_CLASS();
 public:
 	ObjectHeader object_header_;
 
 	Oop selfOop()
 	{
 		return Oop::fromPointer(this);
-	}
-
-	Oop nativePerformWithArguments(Oop selector, int argumentCount, Oop *arguments)
-	{
-		return sendMessage(selfOop(), selector, argumentCount, arguments);
 	}
 
 	uint8_t *getFirstFieldPointer()
@@ -58,6 +47,7 @@ public:
 		return object_header_.identityHash;
 	}
 
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -65,13 +55,15 @@ public:
  */
 class Object: public ProtoObject
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Oop stClass(Oop self);
+	/*
+    static Oop stClass(Oop self);
 	static Oop stSize(Oop self);
 	static Oop stAt(Oop self, Oop indexOop);
 	static Oop stAtPut(Oop self, Oop index, Oop value);
+    */
 
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -79,9 +71,8 @@ public:
  */
 class Behavior: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static constexpr int BehaviorVariableCount = 5;
+    static constexpr int BehaviorVariableCount = 5;
 
 	Behavior* superclass;
 	MethodDictionary *methodDict;
@@ -89,25 +80,28 @@ public:
 	Oop fixedVariableCount;
 	Oop layout;
 
-	Oop basicNew();
-	Oop basicNew(Oop indexableSize);
+	Oop basicNew(VMContext *context);
+	Oop basicNew(VMContext *context, Oop indexableSize);
 
-	Object *basicNativeNew();
-	Object *basicNativeNew(size_t indexableSize);
+	Object *basicNativeNew(VMContext *context);
+	Object *basicNativeNew(VMContext *context, size_t indexableSize);
 
 	Oop superLookupSelector(Oop selector);
 	Oop lookupSelector(Oop selector);
 
-	Oop getBinding();
+	Oop getBinding(VMContext *context);
 
-    Oop registerInClassTable();
+    Oop registerInClassTable(VMContext *context);
 
+    static SpecialNativeClassFactory Factory;
+/*
 protected:
 	Behavior(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount)
 		: superclass(superclass), methodDict(methodDictBuilder()), format(Oop::encodeSmallInteger((int)format)), fixedVariableCount(Oop::encodeSmallInteger(fixedVariableCount))
 	{
 		object_header_ = ObjectHeader::specialNativeClass(0, 0, BehaviorVariableCount);
 	}
+*/
 };
 
 /**
@@ -115,23 +109,25 @@ protected:
  */
 class ClassDescription: public Behavior
 {
-	LODTALK_NATIVE_CLASS();
-protected:
+/*protected:
 	ClassDescription(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount, const char *instanceVariableNames)
 		: Behavior(superclass, methodDictBuilder, format, fixedVariableCount)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(0, 0, ClassDescriptionVariableCount);
 		instanceVariables = splitVariableNames(instanceVariableNames);
 	}
-
+*/
 public:
 	static constexpr int ClassDescriptionVariableCount = BehaviorVariableCount + 2;
 
 	Oop instanceVariables;
 	Oop organization;
 
+    static SpecialNativeClassFactory Factory;
+/*
 protected:
 	static Oop splitVariableNames(const char *instanceVariableNames);
+*/
 
 };
 
@@ -140,21 +136,22 @@ protected:
  */
 class Class: public ClassDescription
 {
-	LODTALK_NATIVE_CLASS();
 public:
 	static constexpr int ClassVariableCount = ClassDescriptionVariableCount + 8;
 
-	Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount, const char *instanceVariableNames)
+    static Class *basicNativeNewClass(VMContext *context, unsigned int classIndex);
+
+	/*Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount, const char *instanceVariableNames)
 		: ClassDescription(superclass, methodDictBuilder, format, fixedVariableCount, instanceVariableNames)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, metaclassId, ClassVariableCount);
 		name = makeByteSymbol(className);
 		setGlobalVariable(name, Oop::fromPointer(this));
-	}
+	}*/
 
 	std::string getNameString();
 
-	Oop getBinding();
+	Oop getBinding(VMContext *context);
 
 	Oop subclasses;
 	Oop name;
@@ -164,6 +161,8 @@ public:
 	Oop environment;
 	Oop traitComposition;
 	Oop localSelectors;
+
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -171,22 +170,25 @@ public:
  */
 class Metaclass: public ClassDescription
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static constexpr int MetaclassVariableCount = ClassDescriptionVariableCount + 3;
+    static constexpr int MetaclassVariableCount = ClassDescriptionVariableCount + 3;
 
-	Metaclass(unsigned int classId, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, int fixedVariableCount, const char *instanceVariableNames, ClassDescription *thisClassPointer)
+    static Metaclass *basicNativeNewMetaclass(VMContext *context);
+
+	/*Metaclass(unsigned int classId, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, int fixedVariableCount, const char *instanceVariableNames, ClassDescription *thisClassPointer)
 		: ClassDescription(superclass, methodDictBuilder, OF_FIXED_SIZE, Class::ClassVariableCount + fixedVariableCount, instanceVariableNames)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, SCI_Metaclass, MetaclassVariableCount);
 		thisClass = Oop::fromPointer(thisClassPointer);
-	}
+	}*/
 
-	Oop getBinding();
+	Oop getBinding(VMContext *context);
 
 	Oop thisClass;
 	Oop traitComposition;
 	Oop localSelectors;
+
+    static SpecialNativeClassFactory Factory;
 };
 
 class MethodDictionary;
@@ -196,12 +198,13 @@ class MethodDictionary;
  */
 class UndefinedObject: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
 	UndefinedObject()
 	{
 		object_header_ = ObjectHeader::emptySpecialNativeClass(SOI_Nil, SCI_UndefinedObject);
 	}
+
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -209,7 +212,8 @@ public:
  */
 class Boolean: public Object
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -217,12 +221,13 @@ class Boolean: public Object
  */
 class True: public Boolean
 {
-	LODTALK_NATIVE_CLASS();
 public:
 	True()
 	{
 		object_header_ = ObjectHeader::emptySpecialNativeClass(SOI_True, SCI_True);
 	}
+
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -230,12 +235,13 @@ public:
  */
 class False: public Boolean
 {
-	LODTALK_NATIVE_CLASS();
 public:
 	False()
 	{
 		object_header_ = ObjectHeader::emptySpecialNativeClass(SOI_False, SCI_False);
 	}
+
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -243,7 +249,8 @@ public:
  */
 class Magnitude: public Object
 {
-	LODTALK_NATIVE_CLASS();
+public:
+	static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -251,7 +258,8 @@ class Magnitude: public Object
  */
 class Number: public Magnitude
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -259,7 +267,8 @@ class Number: public Magnitude
  */
 class Integer: public Number
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -267,7 +276,8 @@ class Integer: public Number
  */
 class SmallInteger: public Integer
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -275,7 +285,8 @@ class SmallInteger: public Integer
  */
 class Float: public Number
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -283,7 +294,8 @@ class Float: public Number
  */
 class SmallFloat: public Float
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -291,7 +303,8 @@ class SmallFloat: public Float
  */
 class Character: public Magnitude
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -299,8 +312,9 @@ class Character: public Magnitude
  */
 class LookupKey: public Magnitude
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 	Oop key;
 };
 
@@ -314,14 +328,14 @@ inline Oop getLookupKeyKey(const Oop lookupKey)
  */
 class Association: public LookupKey
 {
-	LODTALK_NATIVE_CLASS();
-	Association() {}
 public:
-	static Association *newNativeKeyValue(int clazzId, Oop key, Oop value);
+    static SpecialNativeClassFactory Factory;
 
-	static Association* make(Oop key, Oop value)
+    static Association *newNativeKeyValue(VMContext *context, int clazzId, Oop key, Oop value);
+
+	static Association* make(VMContext *context, Oop key, Oop value)
 	{
-		return newNativeKeyValue(SCI_Association, key, value);
+		return newNativeKeyValue(context, SCI_Association, key, value);
 	}
 
 	Oop value;
@@ -332,8 +346,8 @@ public:
  */
 class LiteralVariable: public Association
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -341,11 +355,12 @@ public:
  */
 class GlobalVariable: public LiteralVariable
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Association* make(Oop key, Oop value)
+    static SpecialNativeClassFactory Factory;
+
+	static Association* make(VMContext *context, Oop key, Oop value)
 	{
-		return newNativeKeyValue(SCI_GlobalVariable, key, value);
+		return newNativeKeyValue(context, SCI_GlobalVariable, key, value);
 	}
 };
 
@@ -354,13 +369,13 @@ public:
  */
 class ClassVariable: public LiteralVariable
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Association* make(Oop key, Oop value)
-	{
-		return newNativeKeyValue(SCI_ClassVariable, key, value);
-	}
+    static SpecialNativeClassFactory Factory;
 
+	static Association* make(VMContext *context, Oop key, Oop value)
+	{
+		return newNativeKeyValue(context, SCI_ClassVariable, key, value);
+	}
 };
 
 /**
@@ -368,7 +383,9 @@ public:
  */
 class GlobalContext: public Object
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -376,13 +393,15 @@ class GlobalContext: public Object
  */
 class SmalltalkImage: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
-    static SmalltalkImage *create();
+    static SpecialNativeClassFactory Factory;
+
+    static SmalltalkImage *create(VMContext *context);
 
     Oop globals;
 };
 
+/*
 // Class method dictionary.
 #define LODTALK_BEGIN_CLASS_TABLE(className) \
 static MethodDictionary *className ## _class_methodDictBuilder() { \
@@ -423,9 +442,9 @@ LODTALK_SPECIAL_CLASS_DEFINITION(className, superName, format, fixedVariableCoun
 
 // Native method.
 #define LODTALK_NATIVE_METHOD(selector, cppImplementation)
+*/
 
 // The nil oop
-
 inline bool isNil(ProtoObject *obj)
 {
 	return (UndefinedObject*)obj == &NilObject;

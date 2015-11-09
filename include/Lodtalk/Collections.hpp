@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 #include <string>
-#include "Object.hpp"
+#include "Lodtalk/Object.hpp"
 
 namespace Lodtalk
 {
@@ -13,8 +13,9 @@ namespace Lodtalk
  */
 class Collection: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -22,8 +23,9 @@ public:
  */
 class SequenceableCollection: public Collection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -31,8 +33,9 @@ public:
  */
 class ArrayedCollection: public SequenceableCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -40,9 +43,10 @@ public:
  */
 class Array: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Array *basicNativeNew(size_t indexableSize);
+    static SpecialNativeClassFactory Factory;
+
+	static Array *basicNativeNew(VMContext *context, size_t indexableSize);
 };
 
 /**
@@ -50,8 +54,9 @@ public:
  */
 class ByteArray: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -59,8 +64,9 @@ public:
  */
 class FloatArray: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -68,8 +74,9 @@ public:
  */
 class WordArray: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -77,8 +84,9 @@ public:
  */
 class IntegerArray: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -86,8 +94,9 @@ public:
  */
 class String: public ArrayedCollection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -95,18 +104,20 @@ public:
  */
 class ByteString: public String
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static ByteString *basicNativeNew(size_t indexableSize);
+    static SpecialNativeClassFactory Factory;
 
-	static ByteString *fromNativeRange(const char *start, size_t size);
-    static ByteString *fromNativeReverseRange(const char *start, ptrdiff_t size);
-	static Ref<ByteString> fromNative(const std::string &native);
+	static ByteString *basicNativeNew(VMContext *context, size_t indexableSize);
 
-	Oop stSplitVariableNames();
-	static Oop splitVariableNames(const std::string &string);
+	static ByteString *fromNativeRange(VMContext *context, const char *start, size_t size);
+    static ByteString *fromNativeReverseRange(VMContext *context, const char *start, ptrdiff_t size);
+	static Ref<ByteString> fromNative(VMContext *context, const std::string &native);
+
+	static Oop splitVariableNames(VMContext *context, const std::string &string);
 
 	std::string getString();
+
+    static int stSplitVariableNames(InterpreterProxy *intepreter);
 };
 
 /**
@@ -114,8 +125,8 @@ public:
  */
 class WideString: public String
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -123,8 +134,8 @@ public:
  */
 class Symbol: public String
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -132,12 +143,13 @@ public:
  */
 class ByteSymbol: public Symbol
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Object *basicNativeNew(size_t indexableSize);
+    static SpecialNativeClassFactory Factory;
 
-	static Oop fromNative(const std::string &native);
-	static Oop fromNativeRange(const char *star, size_t size);
+	static Object *basicNativeNew(VMContext *context, size_t indexableSize);
+
+	static Oop fromNative(VMContext *context, const std::string &native);
+	static Oop fromNativeRange(VMContext *context, const char *star, size_t size);
 
 	std::string getString();
 };
@@ -147,8 +159,8 @@ public:
  */
 class WideSymbol: public Symbol
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -156,8 +168,9 @@ public:
  */
 class HashedCollection: public Collection
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
     void initialize()
     {
         capacityObject = Oop::encodeSmallInteger(0);
@@ -182,9 +195,9 @@ public:
 	}
 
 protected:
-	void setKeyCapacity(size_t keyCapacity)
+	void setKeyCapacity(VMContext *context, size_t keyCapacity)
 	{
-		keyValues = Array::basicNativeNew(keyCapacity);
+		keyValues = Array::basicNativeNew(context, keyCapacity);
 	}
 
 	template<typename KF, typename HF, typename EF>
@@ -231,23 +244,23 @@ protected:
 	}
 
 	template<typename KF, typename HF, typename EF>
-	void increaseSize(const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
+	void increaseSize(VMContext *context, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		tallyObject.intValue += 2;
 
 		// Do not use more than 80% of the capacity
 		if(tallyObject.intValue > capacityObject.intValue*4/5)
-			increaseCapacity(keyFunction, hashFunction, equalityFunction);
+			increaseCapacity(context, keyFunction, hashFunction, equalityFunction);
 	}
 
 	template<typename KF, typename HF, typename EF>
-	void increaseCapacity(const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
+	void increaseCapacity(VMContext *context, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		size_t newCapacity = getCapacity()*2;
 		if(!newCapacity)
 			newCapacity = 16;
 
-		setCapacity(newCapacity, keyFunction, hashFunction, equalityFunction);
+		setCapacity(context, newCapacity, keyFunction, hashFunction, equalityFunction);
 	}
 
 	template<typename KF, typename HF, typename EF>
@@ -265,15 +278,15 @@ protected:
 	}
 
 	template<typename KF, typename HF, typename EF>
-	void internalPutKeyValue(Oop keyValue, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
+	void internalPutKeyValue(VMContext *context, Oop keyValue, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		// If a slot was not found, try to increase the capacity.
 		auto position = findKeyPosition(keyFunction(keyValue), keyFunction, hashFunction, equalityFunction);
 		if(position < 0)
 		{
-            OopRef keyValueRef = keyValue;
-			increaseCapacity(keyFunction, hashFunction, equalityFunction);
-			return internalPutKeyValue(keyValueRef.oop, keyFunction, hashFunction, equalityFunction);
+            OopRef keyValueRef(context, keyValue);
+			increaseCapacity(context, keyFunction, hashFunction, equalityFunction);
+			return internalPutKeyValue(context, keyValueRef.oop, keyFunction, hashFunction, equalityFunction);
 		}
 
 		// Put the key and value.
@@ -283,20 +296,20 @@ protected:
 
 		// Increase the size.
 		if(isNil(oldKeyValue))
-			increaseSize(keyFunction, hashFunction, equalityFunction);
+			increaseSize(context, keyFunction, hashFunction, equalityFunction);
 	}
 
 	template<typename KF, typename HF, typename EF>
-	void setCapacity(size_t newCapacity, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
+	void setCapacity(VMContext *context, size_t newCapacity, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		// Store temporarily the data.
-		Ref<Array> oldKeyValues(keyValues);
+		Ref<Array> oldKeyValues(context, keyValues);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 
 		// Create the new capacity.
 		capacityObject = Oop::encodeSmallInteger(newCapacity);
 		tallyObject = Oop::encodeSmallInteger(0);
-		setKeyCapacity(newCapacity);
+		setKeyCapacity(context, newCapacity);
 
 		// Add back the old objects.
 		if(!oldKeyValues.isNil())
@@ -306,7 +319,7 @@ protected:
 			{
 				auto oldKeyValue = oldKeyValuesOops[i];
 				if(!isNil(oldKeyValue))
-					internalPutKeyValue(oldKeyValue, keyFunction, hashFunction, equalityFunction);
+					internalPutKeyValue(context, oldKeyValue, keyFunction, hashFunction, equalityFunction);
 			}
 		}
 	}
@@ -321,7 +334,8 @@ protected:
  */
 class Dictionary: public HashedCollection
 {
-	LODTALK_NATIVE_CLASS();
+public:
+    static SpecialNativeClassFactory Factory;
 };
 
 /**
@@ -329,24 +343,19 @@ class Dictionary: public HashedCollection
  */
 class MethodDictionary: public Dictionary
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static MethodDictionary* basicNativeNew();
+    static SpecialNativeClassFactory Factory;
 
-	template<typename T>
-	void addMethod(const T &methodDescriptor)
-	{
-		atPut(methodDescriptor.getSelector(), methodDescriptor.getMethod());
-	}
+	static MethodDictionary* basicNativeNew(VMContext *context);
 
 	Oop atOrNil(Oop key)
 	{
 		return internalAtOrNil(key);
 	}
 
-	Oop atPut(Oop key, Oop value)
+	Oop atPut(VMContext *context, Oop key, Oop value)
 	{
-		internalAtPut(key, value);
+		internalAtPut(context, key, value);
 		return value;
 	}
 
@@ -369,22 +378,22 @@ protected:
 		values = (Array*)&NilObject;
 	}
 
-	void increaseSize()
+	void increaseSize(VMContext *context)
 	{
 		tallyObject.intValue += 2;
 
 		// Do not use more than 80% of the capacity
 		if(tallyObject.intValue > capacityObject.intValue*4/5)
-			increaseCapacity();
+			increaseCapacity(context);
 	}
 
-	void increaseCapacity()
+	void increaseCapacity(VMContext *context)
 	{
 		size_t newCapacity = getCapacity()*2;
 		if(!newCapacity)
 			newCapacity = 16;
 
-		setCapacity(newCapacity);
+		setCapacity(context, newCapacity);
 	}
 
 	Oop internalAtOrNil(Oop key)
@@ -400,16 +409,16 @@ protected:
 		return getHashTableValues()[position];
 	}
 
-	void internalAtPut(Oop key, Oop value)
+	void internalAtPut(VMContext *context, Oop key, Oop value)
 	{
 		// If a slot was not found, try to increase the capacity.
 		auto position = findKeyPosition(key, identityFunction<Oop>, identityHashOf, identityOopEquals);
 		if(position < 0)
 		{
-            OopRef keyRef = key;
-            OopRef valueRef = value;
-			increaseCapacity();
-            return internalAtPut(keyRef.oop, valueRef.oop);
+            OopRef keyRef(context, key);
+            OopRef valueRef(context, value);
+			increaseCapacity(context);
+            return internalAtPut(context, keyRef.oop, valueRef.oop);
 		}
 
 		// Put the key and value.
@@ -421,21 +430,21 @@ protected:
 
 		// Increase the size.
 		if(isNil(oldKey))
-			increaseSize();
+			increaseSize(context);
 	}
 
-	void setCapacity(size_t newCapacity)
+	void setCapacity(VMContext *context, size_t newCapacity)
 	{
 		// Store temporarily the data.
-		Ref<Array> oldKeys(keyValues);
-		Ref<Array> oldValues(values);
+		Ref<Array> oldKeys(context, keyValues);
+		Ref<Array> oldValues(context, values);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 
 		// Create the new capacity.
 		capacityObject = Oop::encodeSmallInteger(newCapacity);
 		tallyObject = Oop::encodeSmallInteger(0);
-		setKeyCapacity(newCapacity);
-		setValueCapacity(newCapacity);
+		setKeyCapacity(context, newCapacity);
+		setValueCapacity(context, newCapacity);
 
 		// Add back the old objects.
 		if(!oldKeys.isNil())
@@ -446,14 +455,14 @@ protected:
 			{
 				auto oldKey = oldKeysOops[i];
 				if(!isNil(oldKey))
-					internalAtPut(oldKey, oldValuesOops[i]);
+					internalAtPut(context, oldKey, oldValuesOops[i]);
 			}
 		}
 	}
 
-	void setValueCapacity(size_t valueCapacity)
+	void setValueCapacity(VMContext *context, size_t valueCapacity)
 	{
-		values = Array::basicNativeNew(valueCapacity);
+		values = Array::basicNativeNew(context, valueCapacity);
 	}
 
 	Array* values;
@@ -464,13 +473,14 @@ protected:
  */
 class IdentityDictionary: public Dictionary
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 	struct End {};
 
-	Oop putAssociation(Oop assoc)
+	Oop putAssociation(VMContext *context, Oop assoc)
 	{
-		internalPutKeyValue(assoc, getLookupKeyKey, identityHashOf, identityOopEquals);
+		internalPutKeyValue(context, assoc, getLookupKeyKey, identityHashOf, identityOopEquals);
         return assoc;
 	}
 
@@ -479,9 +489,9 @@ public:
 		return internalKeyValueAtOrNil(key, getLookupKeyKey, identityHashOf, identityOopEquals);
 	}
 
-	void putNativeAssociation(Association *assoc)
+	void putNativeAssociation(VMContext *context, Association *assoc)
 	{
-		putAssociation(Oop::fromPointer(assoc));
+		putAssociation(context, Oop::fromPointer(assoc));
 	}
 
 	Association *getNativeAssociationOrNil(Oop key)
@@ -495,11 +505,12 @@ public:
  */
 class SystemDictionary: public IdentityDictionary
 {
-	LODTALK_NATIVE_CLASS();
 public:
+    static SpecialNativeClassFactory Factory;
+
 	struct End {};
 
-    static SystemDictionary *create();
+    static SystemDictionary *create(VMContext *context);
 };
 
 } // End of namespace Lodtalk

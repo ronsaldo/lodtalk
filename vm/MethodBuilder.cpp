@@ -1,3 +1,4 @@
+#include "Lodtalk/VMContext.hpp"
 #include "MethodBuilder.hpp"
 #include "BytecodeSets.hpp"
 
@@ -688,7 +689,8 @@ private:
 };
 
 // The assembler
-Assembler::Assembler()
+Assembler::Assembler(VMContext *context)
+    : context(context)
 {
 }
 
@@ -786,7 +788,7 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 	auto methodHeader = CompiledMethodHeader::create(literalCount, temporalCount, argumentCount);
 
 	// Create the compiled method
-	auto compiledMethod = CompiledMethod::newMethodWithHeader(methodSize, methodHeader);
+	auto compiledMethod = CompiledMethod::newMethodWithHeader(context, methodSize, methodHeader);
 
 	// Set the compiled method literals
 	auto literalData = compiledMethod->getFirstLiteralPointer();
@@ -1054,7 +1056,7 @@ InstructionNode *Assembler::send(Oop selector, int argumentCount)
 {
     for(int i = 0; i < (int)SpecialMessageSelector::SpecialMessageCount; ++i)
     {
-        auto specialSelector = getSpecialMessageSelector(SpecialMessageSelector(i));
+        auto specialSelector = context->getSpecialMessageSelector(SpecialMessageSelector(i));
         if(selector == specialSelector)
             return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageAdd + i, false));
     }

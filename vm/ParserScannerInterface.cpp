@@ -5,7 +5,7 @@ typedef void *yyscan_t;
 
 #ifdef _WIN32
 #define YY_NO_UNISTD_H
-#endif 
+#endif
 
 #include "ParserScannerInterface.hpp"
 #include "Parser.hpp"
@@ -25,50 +25,53 @@ static Node *doParse(yyscan_t scanner, ParserScannerExtraData *extraData)
 	Lodtalk_lex_destroy(scanner);
 	if(result || extraData->errorCount > 0)
         return nullptr;
-        
+
 	return extraData->astResult;
 }
 
-Node *parseSourceFromFile(FILE *input)
+Node *parseSourceFromFile(VMContext *context, FILE *input)
 {
     yyscan_t scanner;
     if(Lodtalk_lex_init(&scanner))
         return nullptr;
-        
+
     ParserScannerExtraData extraData;
     memset(&extraData, 0, sizeof(extraData));
     extraData.startToken = SOURCE_FILE;
+    extraData.context = context;
     Lodtalk_set_extra(&extraData, scanner);
     Lodtalk_set_in(input, scanner);
 	return doParse(scanner, &extraData);
 }
 
-Node *parseMethodFromFile(FILE *input)
+Node *parseMethodFromFile(VMContext *context, FILE *input)
 {
     yyscan_t scanner;
     if(Lodtalk_lex_init(&scanner))
         return nullptr;
-        
+
     ParserScannerExtraData extraData;
     memset(&extraData, 0, sizeof(extraData));
     extraData.startToken = METHOD_DEFINITION;
+    extraData.context = context;
     Lodtalk_set_extra(&extraData, scanner);
     Lodtalk_set_in(input, scanner);
 	return doParse(scanner, &extraData);
 }
 
-Node *parseDoItFromFile(FILE *input)
+Node *parseDoItFromFile(VMContext *context, FILE *input)
 {
     yyscan_t scanner;
     if(Lodtalk_lex_init(&scanner))
         return nullptr;
-        
+
     ParserScannerExtraData extraData;
     memset(&extraData, 0, sizeof(extraData));
     extraData.startToken = DO_IT;
+    extraData.context = context;
     Lodtalk_set_extra(&extraData, scanner);
     Lodtalk_set_in(input, scanner);
-	return doParse(scanner, &extraData);	
+	return doParse(scanner, &extraData);
 }
 
 } // End of namespace AST

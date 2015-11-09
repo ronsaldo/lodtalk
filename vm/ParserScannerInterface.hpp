@@ -1,6 +1,7 @@
 #ifndef LODTALK_PARSER_SCANNER_INTERFACE_HPP
 #define LODTALK_PARSER_SCANNER_INTERFACE_HPP
 
+#include "Lodtalk/VMContext.hpp"
 #include "AST.hpp"
 
 struct ParserScannerExtraData
@@ -9,15 +10,16 @@ struct ParserScannerExtraData
 	int errorCount;
     int columnCount;
 	Lodtalk::AST::Node *astResult;
+    Lodtalk::VMContext *context;
 };
 
 namespace Lodtalk
 {
 namespace AST
 {
-Node *parseSourceFromFile(FILE *input);
-Node *parseMethodFromFile(FILE *input);
-Node *parseDoItFromFile(FILE *input);
+Node *parseSourceFromFile(VMContext *context, FILE *input);
+Node *parseMethodFromFile(VMContext *context, FILE *input);
+Node *parseDoItFromFile(VMContext *context, FILE *input);
 
 } // End of namespace AST
 } // End of names Lodtalk

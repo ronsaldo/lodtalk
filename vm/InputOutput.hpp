@@ -1,8 +1,8 @@
 #ifndef LODTALK_INPUT_OUTPUT_HPP
 #define LODTALK_INPUT_OUTPUT_HPP
 
-#include "Object.hpp"
-#include "Collections.hpp"
+#include "Lodtalk/Object.hpp"
+#include "Lodtalk/Collections.hpp"
 
 namespace Lodtalk
 {
@@ -12,13 +12,14 @@ namespace Lodtalk
  */
 class OSIO: public Object
 {
-	LODTALK_NATIVE_CLASS();
 public:
-	static Oop stStdout(Oop clazz);
-	static Oop stStdin(Oop clazz);
-	static Oop stStderr(Oop clazz);
-	
-	static Oop writeOffsetSizeTo(Oop clazz, Oop buffer, Oop offset, Oop size, Oop file);
+    static NativeClassFactory Factory;
+
+	static int stStdout(InterpreterProxy *interpreter);
+	static int stStdin(InterpreterProxy *interpreter);
+	static int stStderr(InterpreterProxy *interpreter);
+
+	static int stWriteOffsetSizeTo(InterpreterProxy *interpreter);
 };
 
 } // End of namespace Lodtalk
