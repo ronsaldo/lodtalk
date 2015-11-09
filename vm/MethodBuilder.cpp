@@ -1054,7 +1054,7 @@ InstructionNode *Assembler::identityEqual()
 
 InstructionNode *Assembler::send(Oop selector, int argumentCount)
 {
-    for(int i = 0; i < (int)SpecialMessageSelector::SpecialMessageCount; ++i)
+    for(int i = 0; i < (int)SpecialMessageSelector::SpecialMessageOptimizedCount; ++i)
     {
         auto specialSelector = context->getSpecialMessageSelector(SpecialMessageSelector(i));
         if(selector == specialSelector)

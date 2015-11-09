@@ -78,8 +78,9 @@ public:
 	Oop fixedVariableCount;
 	Oop layout;
 
-	Oop basicNew(VMContext *context);
-	Oop basicNew(VMContext *context, Oop indexableSize);
+	static int stBasicNew(InterpreterProxy *interpreter);
+	static int stBasicNewSize(InterpreterProxy *interpreter);
+    static int stRegisterInClassTable(InterpreterProxy *interpreter);
 
 	Object *basicNativeNew(VMContext *context);
 	Object *basicNativeNew(VMContext *context, size_t indexableSize);
@@ -88,8 +89,6 @@ public:
 	Oop lookupSelector(Oop selector);
 
 	Oop getBinding(VMContext *context);
-
-    Oop registerInClassTable(VMContext *context);
 
     static SpecialNativeClassFactory Factory;
 /*
@@ -276,6 +275,8 @@ class SmallInteger: public Integer
 {
 public:
     static SpecialNativeClassFactory Factory;
+
+    static int stPrintString(InterpreterProxy *interpreter);
 };
 
 /**

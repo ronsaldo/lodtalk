@@ -64,11 +64,37 @@ Oop CompiledMethod::dump()
     return selfOop();
 }
 
+int CompiledMethod::stNewMethodWithHeader(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 2)
+        return interpreter->primitiveFailed();
+
+    auto sizeOop = interpreter->getTemporary(0);
+    CompiledMethodHeader header = interpreter->getTemporary(1);
+    auto method = newMethodWithHeader(interpreter->getContext(), sizeOop.decodeSmallInteger(), header);
+    return interpreter->returnOop(Oop::fromPointer(method));
+}
+
+int CompiledMethod::stDump(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto selfOop = interpreter->getReceiver();
+    auto self = reinterpret_cast<CompiledMethod*> (selfOop.pointer);
+    self->dump();
+    return interpreter->returnReceiver();
+}
+
 SpecialNativeClassFactory CompiledMethod::Factory("CompiledMethod", SCI_CompiledMethod, &ByteArray::Factory, [](ClassBuilder &builder) {
     builder
         .compiledMethodFormat();
-    //LODTALK_METHOD("newMethod:header:", newMethodHeader)
-    //LODTALK_METHOD("dump", &CompiledMethod::dump)
+
+    builder
+        .addClassMethod("newMethod:header:", CompiledMethod::stNewMethodWithHeader);
+
+    builder
+        .addMethod("dump", CompiledMethod::stDump);
 });
 
 // NativeMethod

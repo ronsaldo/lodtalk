@@ -6,7 +6,6 @@
 #include "Lodtalk/ClassBuilder.hpp"
 #include "Lodtalk/Object.hpp"
 #include "Lodtalk/Collections.hpp"
-#include "MPL.hpp"
 
 namespace Lodtalk
 {
@@ -82,6 +81,9 @@ public:
 	}
 
     Oop dump();
+
+    static int stNewMethodWithHeader(InterpreterProxy *interpreter);
+    static int stDump(InterpreterProxy *interpreter);
 };
 
 /**

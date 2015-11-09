@@ -28,7 +28,6 @@ set(Lodtalk_SRC
      Method.hpp
      MethodBuilder.cpp
      MethodBuilder.hpp
-     MPL.hpp
      Object.cpp
      ObjectModel.cpp
      Parser.y

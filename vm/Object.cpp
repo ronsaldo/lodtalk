@@ -201,14 +201,33 @@ SpecialNativeClassFactory UndefinedObject::Factory("UndefinedObject", SCI_Undefi
 });
 
 // Behavior
-Oop Behavior::basicNew(VMContext *context)
+int Behavior::stBasicNew(InterpreterProxy *interpreter)
 {
-	return Oop::fromPointer(basicNativeNew(context));
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto self = reinterpret_cast<Behavior*> (interpreter->getReceiver().pointer);
+    return interpreter->returnOop(Oop::fromPointer(self->basicNativeNew(interpreter->getContext())));
 }
 
-Oop Behavior::basicNew(VMContext *context, Oop indexableSize)
+int Behavior::stBasicNewSize(InterpreterProxy *interpreter)
 {
-	return Oop::fromPointer(basicNativeNew(context, indexableSize.decodeSmallInteger()));
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    Oop size = interpreter->getTemporary(0);
+    auto self = reinterpret_cast<Behavior*> (interpreter->getReceiver().pointer);
+    return interpreter->returnOop(Oop::fromPointer(self->basicNativeNew(interpreter->getContext(), size.decodeSmallInteger())));
+}
+
+int Behavior::stRegisterInClassTable(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto selfOop = interpreter->getReceiver();
+    interpreter->getContext()->registerClassInTable(selfOop);
+    return interpreter->returnReceiver();
 }
 
 Object *Behavior::basicNativeNew(VMContext *context, size_t indexableSize)
@@ -266,21 +285,14 @@ Oop Behavior::getBinding(VMContext *context)
 	LODTALK_UNIMPLEMENTED();
 }
 
-Oop Behavior::registerInClassTable(VMContext *context)
-{
-    assert(selfOop().isPointer());
-    context->registerClassInTable(selfOop());
-    return selfOop();
-}
-
 SpecialNativeClassFactory Behavior::Factory("Behavior", SCI_Behavior, &Object::Factory, [](ClassBuilder &builder) {
     builder
         .addInstanceVariables("superclass", "methodDict", "format", "fixedVariableCount", "layout");
-    /*
-    LODTALK_METHOD("basicNew", static_cast<Oop (Behavior::*)()> (&Behavior::basicNew))
-	LODTALK_METHOD("basicNew:", static_cast<Oop (Behavior::*)(Oop)> (&Behavior::basicNew))
-    LODTALK_METHOD("registerInClassTable", &Behavior::registerInClassTable)
-    */
+
+    builder
+        .addMethod("basicNew", Behavior::stBasicNew)
+        .addMethod("basicNew:", Behavior::stBasicNewSize)
+        .addMethod("registerInClassTable", Behavior::stRegisterInClassTable);
 });
 
 // ClassDescription
@@ -368,8 +380,12 @@ SpecialNativeClassFactory Integer::Factory("Integer", SCI_Integer, &Number::Fact
 });
 
 // SmallInteger
-/*static Oop SmallInteger_printString(Oop self)
+int SmallInteger::stPrintString(InterpreterProxy *interpreter)
 {
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto self = interpreter->getReceiver();
     if(!self.isSmallInteger())
         nativeError("expected a small integer.");
 
@@ -393,12 +409,13 @@ SpecialNativeClassFactory Integer::Factory("Integer", SCI_Integer, &Number::Fact
     if(negative)
         buffer[dest++] = '-';
 
-    return Oop::fromPointer(ByteString::fromNativeReverseRange(buffer, dest));
+    auto result = Oop::fromPointer(ByteString::fromNativeReverseRange(interpreter->getContext(), buffer, dest));
+    return interpreter->returnOop(result);
 }
-*/
 
 SpecialNativeClassFactory SmallInteger::Factory("SmallInteger", SCI_SmallInteger, &Integer::Factory, [](ClassBuilder &builder) {
-    //LODTALK_METHOD("printString", SmallInteger_printString)
+    builder
+        .addMethod("printString", SmallInteger::stPrintString);
 });
 
 // Float

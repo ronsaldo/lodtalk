@@ -117,7 +117,7 @@ public:
 
 	std::string getString();
 
-    static int stSplitVariableNames(InterpreterProxy *intepreter);
+    static int stSplitVariableNames(InterpreterProxy *interpreter);
 };
 
 /**
@@ -371,6 +371,9 @@ public:
 		return reinterpret_cast<Oop*> (values->getFirstFieldPointer());
 	}
 
+    static int stAtOrNil(InterpreterProxy *interpreter);
+    static int stAtPut(InterpreterProxy *interpreter);
+
 protected:
 	MethodDictionary()
 	{
@@ -498,6 +501,9 @@ public:
 	{
 		return reinterpret_cast<Association *> (getAssociationOrNil(key).pointer);
 	}
+
+    static int stPutAssociation(InterpreterProxy *interpreter);
+    static int stAssociationAtOrNil(InterpreterProxy *interpreter);
 };
 
 /**

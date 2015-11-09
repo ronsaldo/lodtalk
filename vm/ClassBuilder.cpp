@@ -30,6 +30,15 @@ ClassBuilder &ClassBuilder::setSuperclass(Class *superClass, Metaclass *metaSupe
     // Set the meta class super class.
     metaclass->superclass = metaSuper;
 
+    // Set the meta class format and fixed size
+    metaclass->format = metaSuper->format;
+    metaclass->fixedVariableCount = metaSuper->fixedVariableCount;
+    if(isNil(superClass))
+    {
+        metaclass->format = Oop::encodeSmallInteger(OF_FIXED_SIZE);
+        metaclass->fixedVariableCount = Oop::encodeSmallInteger(Class::ClassVariableCount);
+    }
+
     return *this;
 }
 

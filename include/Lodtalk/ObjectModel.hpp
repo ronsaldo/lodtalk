@@ -147,6 +147,7 @@ enum class SpecialMessageSelector
     DoesNotUnderstand,
 
     SpecialMessageCount,
+    SpecialMessageOptimizedCount = BasicNew,
     FirstArithmeticMessage = Add,
     ArithmeticMessageCount = BitOr - FirstArithmeticMessage,
 };

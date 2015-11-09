@@ -3,6 +3,7 @@
 #include <vector>
 #include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Collections.hpp"
+#include "Lodtalk/InterpreterProxy.hpp"
 #include "MemoryManager.hpp"
 #include "Method.hpp"
 
@@ -139,11 +140,14 @@ Oop ByteString::splitVariableNames(VMContext *context, const std::string &string
 	return result.getOop();
 }
 
-int ByteString::stSplitVariableNames(InterpreterProxy *intepreter)
+int ByteString::stSplitVariableNames(InterpreterProxy *interpreter)
 {
-    abort();
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
 
-    // TODO: Call return splitVariableNames(getString());
+    Oop self = interpreter->getReceiver();
+    Oop result = splitVariableNames(interpreter->getContext(), reinterpret_cast<ByteString*> (self.pointer)->getString());
+    return interpreter->returnOop(result);
 }
 
 SpecialNativeClassFactory ByteString::Factory("ByteString", SCI_ByteString, &String::Factory, [](ClassBuilder &builder) {
@@ -229,32 +233,65 @@ MethodDictionary* MethodDictionary::basicNativeNew(VMContext *context)
 	return res;
 }
 
+int MethodDictionary::stAtOrNil(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    Oop selfOop = interpreter->getReceiver();
+    Oop key = interpreter->getTemporary(0);
+    auto self = reinterpret_cast<MethodDictionary*> (selfOop.pointer);
+    return interpreter->returnOop(self->atOrNil(key));
+}
+
+int MethodDictionary::stAtPut(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 2)
+        return interpreter->primitiveFailed();
+
+    Oop selfOop = interpreter->getReceiver();
+    Oop key = interpreter->getTemporary(0);
+    Oop value = interpreter->getTemporary(1);
+    auto self = reinterpret_cast<MethodDictionary*> (selfOop.pointer);
+    return interpreter->returnOop(self->atPut(interpreter->getContext(), key, value));
+}
+
 SpecialNativeClassFactory MethodDictionary::Factory("MethodDictionary", SCI_MethodDictionary, &Dictionary::Factory, [](ClassBuilder &builder) {
     builder
         .addInstanceVariables("values");
 
     builder
-        .addMethod("atOrNil:", +[](InterpreterProxy *proxy) {
-            abort();
-            return 0;
-        })
-        .addMethod("at:put:", +[](InterpreterProxy *proxy) {
-            abort();
-            return 0;
-        });
+        .addMethod("atOrNil:", MethodDictionary::stAtOrNil)
+        .addMethod("at:put:", MethodDictionary::stAtPut);
 });
 
 // IdentityDictionary
+int IdentityDictionary::stPutAssociation(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    Oop selfOop = interpreter->getReceiver();
+    Oop association = interpreter->getTemporary(0);
+    auto self = reinterpret_cast<IdentityDictionary*> (selfOop.pointer);
+    return interpreter->returnOop(self->putAssociation(interpreter->getContext(), association));
+}
+
+int IdentityDictionary::stAssociationAtOrNil(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    Oop selfOop = interpreter->getReceiver();
+    Oop key = interpreter->getTemporary(0);
+    auto self = reinterpret_cast<IdentityDictionary*> (selfOop.pointer);
+    return interpreter->returnOop(self->getAssociationOrNil(key));
+}
+
 SpecialNativeClassFactory IdentityDictionary::Factory("IdentityDictionary", SCI_IdentityDictionary, &Dictionary::Factory, [](ClassBuilder &builder) {
     builder
-        .addMethod("putAssociation:", +[](InterpreterProxy *proxy) {
-            abort();
-            return 0;
-        })
-        .addMethod("associationAtOrNil:", +[](InterpreterProxy *proxy) {
-            abort();
-            return 0;
-        });
+        .addMethod("putAssociation:", IdentityDictionary::stPutAssociation)
+        .addMethod("associationAtOrNil:", IdentityDictionary::stAssociationAtOrNil);
 });
 
 // SystemDictionary
