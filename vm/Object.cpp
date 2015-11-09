@@ -18,15 +18,6 @@ False FalseObject;
 SpecialNativeClassFactory ProtoObject::Factory("ProtoObject", SCI_ProtoObject, nullptr, [](ClassBuilder &builder) {
 });
 
-// Proto object method dictionary.
-/*
-static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_metaclass_methodDictBuilder, 0, "", ProtoObject::ClassObject);
-ClassDescription *ProtoObject::MetaclassObject = &ProtoObject_metaclass;
-
-static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDictBuilder, OF_EMPTY, 0, "");
-ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
-*/
-
 // Object methods
 int Object::stClass(InterpreterProxy *interpreter)
 {
