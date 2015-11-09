@@ -2,8 +2,9 @@
 #include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Object.hpp"
 #include "Lodtalk/Collections.hpp"
-#include "Method.hpp"
+#include "Lodtalk/InterpreterProxy.hpp"
 #include "Lodtalk/Exception.hpp"
+#include "Method.hpp"
 
 namespace Lodtalk
 {
@@ -27,13 +28,19 @@ ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 */
 
 // Object methods
-/*Oop Object::stClass(Oop self)
+int Object::stClass(InterpreterProxy *interpreter)
 {
-	return getClassFromOop(self);
-}*/
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+	return interpreter->returnOop(interpreter->getContext()->getClassFromOop(interpreter->getReceiver()));
+}
 
-/*Oop Object::stSize(Oop self)
+int Object::stSize(InterpreterProxy *interpreter)
 {
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto self = interpreter->getReceiver();
 	if(!self.isPointer())
 	{
 		if(self.isSmallInteger())
@@ -48,76 +55,96 @@ ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 	if(!self.isIndexable())
 		nativeError("not indexable instance.");
 
-	return Oop::encodeSmallInteger(self.getNumberOfElements());
+	return interpreter->returnSmallInteger(self.getNumberOfElements());
 }
-*/
 
-/*
-Oop Object::stAt(Oop self, Oop indexOop)
+int Object::stAt(InterpreterProxy *interpreter)
 {
-	auto size = stSize(self).decodeSmallInteger();
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    interpreter->pushOop(interpreter->getReceiver());
+    auto error = stSize(interpreter);
+    if(error != 0)
+        return error;
+
+    Oop self = interpreter->getReceiver();
+    Oop indexOop = interpreter->getTemporary(0);
+    auto size = interpreter->popOop().decodeSmallInteger();
 	auto index = indexOop.decodeSmallInteger() - 1;
 	if(index > size || index < 0)
 		nativeError("index out of bounds.");
 
     // Get the element.
-    auto firstIndexableField = self.getFirstIndexableFieldPointer();
+    auto context = interpreter->getContext();
+    auto firstIndexableField = self.getFirstIndexableFieldPointer(context);
     auto format = self.header->objectFormat;
     if(format < OF_INDEXABLE_64)
     {
         auto oopData = reinterpret_cast<Oop*> (firstIndexableField);
-        return oopData[index];
+        return interpreter->returnOop(oopData[index]);
     }
 
     if(format >= OF_INDEXABLE_8)
     {
         auto data = reinterpret_cast<uint8_t*> (firstIndexableField);
-        return Oop::encodeSmallInteger(data[index]);
+        return interpreter->returnOop(Oop::encodeSmallInteger(data[index]));
     }
 
     if(format >= OF_INDEXABLE_16)
     {
         auto data = reinterpret_cast<uint16_t*> (firstIndexableField);
-        return Oop::encodeSmallInteger(data[index]);
+        return interpreter->returnOop(Oop::encodeSmallInteger(data[index]));
     }
 
     if(format >= OF_INDEXABLE_32)
     {
 #ifdef OBJECT_MODEL_SPUR_64
         auto data = reinterpret_cast<uint32_t*> (firstIndexableField);
-        return Oop::encodeSmallInteger(data[index]);
+        return interpreter->returnOop(Oop::encodeSmallInteger(data[index]));
 #else
-        return positiveInt32ObjectFor(data[index]);
+        return interpreter->returnOop(context->positiveInt32ObjectFor(data[index]));
 #endif
     }
 
     if(format == OF_INDEXABLE_64)
     {
         auto data = reinterpret_cast<uint64_t*> (firstIndexableField);
-        return positiveInt64ObjectFor(data[index]);
+        return interpreter->returnOop(context->positiveInt64ObjectFor(data[index]));
     }
 
     // Should not reach here.
 	nativeError("unimplemented");
-	return Oop();
+	abort();
 }
-*/
 
-/*Oop Object::stAtPut(Oop self, Oop indexOop, Oop value)
+
+int Object::stAtPut(InterpreterProxy *interpreter)
 {
-	auto size = stSize(self).decodeSmallInteger();
+    if(interpreter->getArgumentCount() != 2)
+        return interpreter->primitiveFailed();
+
+    interpreter->pushOop(interpreter->getReceiver());
+    auto error = stSize(interpreter);
+    if(error != 0)
+        return error;
+
+    auto self = interpreter->getReceiver();
+    auto indexOop = interpreter->getTemporary(0);
+    auto value = interpreter->getTemporary(1);
+	auto size = interpreter->popOop().decodeSmallInteger();
 	auto index = indexOop.decodeSmallInteger() - 1;
 	if(index > size || index < 0)
 		nativeError("index out of bounds.");
 
     // Set the element.
-    auto firstIndexableField = self.getFirstIndexableFieldPointer();
+    auto context = interpreter->getContext();
+    auto firstIndexableField = self.getFirstIndexableFieldPointer(context);
     auto format = self.header->objectFormat;
     if(format < OF_INDEXABLE_64)
     {
         auto oopData = reinterpret_cast<Oop*> (firstIndexableField);
         oopData[index] = value;
-        return self;
     }
     else if(format >= OF_INDEXABLE_8)
     {
@@ -126,7 +153,6 @@ Oop Object::stAt(Oop self, Oop indexOop)
             nativeError("expected a small integer.");
 
         data[index] = value.decodeSmallInteger();
-        return self;
     }
     else if(format >= OF_INDEXABLE_16)
     {
@@ -135,7 +161,6 @@ Oop Object::stAt(Oop self, Oop indexOop)
             nativeError("expected a small integer.");
 
         data[index] = value.decodeSmallInteger();
-        return self;
     }
     else if(format >= OF_INDEXABLE_32)
     {
@@ -146,30 +171,29 @@ Oop Object::stAt(Oop self, Oop indexOop)
 
         data[index] = value.decodeSmallInteger();
 #else
-        data[index] = positiveInt32ValueOf(value);
-        return self;
+        data[index] = context->positiveInt32ValueOf(value);
 #endif
     }
     else if(format == OF_INDEXABLE_64)
     {
         auto data = reinterpret_cast<uint64_t*> (firstIndexableField);
-        data[index] = positiveInt64ValueOf(value);
-        return self;
+        data[index] = context->positiveInt64ValueOf(value);
+    }
+    else
+    {
+    	nativeError("unimplemented");
     }
 
-	nativeError("unimplemented");
-	return Oop();
+    return interpreter->returnReceiver();
 }
-*/
 
 // Object
 SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
-    /*
-    LODTALK_METHOD("class", Object::stClass)
-	LODTALK_METHOD("size", Object::stSize)
-	LODTALK_METHOD("at:", Object::stAt)
-	LODTALK_METHOD("at:put:", Object::stAtPut)
-    */
+    builder
+        .addMethod("class", Object::stClass)
+        .addMethod("size", Object::stSize)
+        .addMethod("at:", Object::stAt)
+        .addMethod("at:put:", Object::stAtPut);
 });
 
 // Undefined object

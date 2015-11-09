@@ -44,6 +44,7 @@ public:
     virtual int returnTop() override;
     virtual int returnReceiver() override;
     virtual int returnSmallInteger(SmallIntegerValue value) override;
+    virtual int returnOop(Oop value) override;
 
     // Temporaries
     virtual size_t getArgumentCount() override;
@@ -1992,6 +1993,12 @@ int StackInterpreterProxy::returnSmallInteger(SmallIntegerValue value)
     return 0;
 }
 
+int StackInterpreterProxy::returnOop(Oop value)
+{
+    interpreter->returnValue(value);
+    return 0;
+}
+
 // Temporaries
 size_t StackInterpreterProxy::getArgumentCount()
 {
@@ -2043,11 +2050,13 @@ void StackInterpreterProxy::sendBasicNewWithSize(size_t size)
 void StackInterpreterProxy::sendMessage(int argumentCount)
 {
     interpreter->sendMessage(argumentCount);
+    interpreter->interpret();
 }
 
 void StackInterpreterProxy::sendMessageWithSelector(Oop selector, int argumentCount)
 {
     interpreter->sendSelectorArgumentCount(selector, argumentCount);
+    interpreter->interpret();
 }
 
 void VMContext::withInterpreter(const WithInterpreterBlock &block)

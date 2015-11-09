@@ -1738,7 +1738,6 @@ int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
 
 	// Compile the method
 	Ref<CompiledMethod> compiledMethod(context, compileMethod(context, instanceVarScope, clazz, ast));
-    compiledMethod->dump();
     
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();

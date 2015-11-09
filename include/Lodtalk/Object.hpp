@@ -56,12 +56,10 @@ public:
 class Object: public ProtoObject
 {
 public:
-	/*
-    static Oop stClass(Oop self);
-	static Oop stSize(Oop self);
-	static Oop stAt(Oop self, Oop indexOop);
-	static Oop stAtPut(Oop self, Oop index, Oop value);
-    */
+    static int stClass(InterpreterProxy *interpreter);
+    static int stSize(InterpreterProxy *interpreter);
+	static int stAt(InterpreterProxy *interpreter);
+	static int stAtPut(InterpreterProxy *interpreter);
 
     static SpecialNativeClassFactory Factory;
 };

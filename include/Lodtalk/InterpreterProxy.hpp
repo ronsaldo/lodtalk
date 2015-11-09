@@ -36,6 +36,7 @@ public:
     virtual int returnTop() = 0;
     virtual int returnReceiver() = 0;
     virtual int returnSmallInteger(SmallIntegerValue value) = 0;
+    virtual int returnOop(Oop value) = 0;
 
     // Temporaries
     virtual size_t getArgumentCount() = 0;

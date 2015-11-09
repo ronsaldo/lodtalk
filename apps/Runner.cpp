@@ -14,7 +14,7 @@ void printHelp()
 
 void loadKernel()
 {
-    //context->executeScriptFromFileNamed("runtime/runtime.lodtalk");
+    context->executeScriptFromFileNamed("runtime/runtime.lodtalk");
 }
 
 int main(int argc, const char *argv[])
