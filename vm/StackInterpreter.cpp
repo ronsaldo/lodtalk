@@ -425,7 +425,7 @@ public:
         if(newReceiverClassIndex == SCI_BlockClosure && selector == context->getBlockActivationSelector(argumentCount))
         {
             auto blockClosure = reinterpret_cast<BlockClosure*> (newReceiver.pointer);
-            if((int)blockClosure->getArgumentCount() == argumentCount)
+            if(blockClosure->getArgumentCount() == argumentCount)
             {
                 // Push the return PC.
     			pushPC();
