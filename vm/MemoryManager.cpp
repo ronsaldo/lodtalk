@@ -51,7 +51,7 @@ unsigned int ClassTable::registerClass(Oop clazz)
 
     pageTable[pageIndex][elementIndex] = clazz;
     clazz.header->identityHash = (unsigned int)size;
-    return unsigned int (size++);
+    return (unsigned int) (size++);
 }
 
 void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
