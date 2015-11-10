@@ -182,7 +182,7 @@ public:
         assert(temporalIndex >= 0);
         if(temporalVectorIndex >= 0)
         {
-            gen.pushTemporalInVector(temporalIndex, temporalVectorIndex + functionalContext->getArgumentCount());
+            gen.pushTemporalInVector(temporalIndex, temporalVectorIndex + (int)functionalContext->getArgumentCount());
         }
         else
         {
@@ -196,7 +196,7 @@ public:
         assert(temporalIndex >= 0);
         if(temporalVectorIndex >= 0)
         {
-            gen.storeTemporalInVector(temporalIndex, temporalVectorIndex + functionalContext->getArgumentCount());
+            gen.storeTemporalInVector(temporalIndex, temporalVectorIndex + (int)functionalContext->getArgumentCount());
         }
         else
         {
@@ -326,11 +326,11 @@ std::pair<int, int> InstanceVariableScope::findInstanceVariable(ClassDescription
 		{
 			if(nameArray[i] == symbol)
 			{
-				instanceVarIndex = i + instanceCount;
+				instanceVarIndex = (int)i + instanceCount;
 				break;
 			}
 		}
-		instanceCount += count;
+		instanceCount += (int)count;
 	}
 
 	return std::make_pair(instanceVarIndex, instanceCount);
@@ -527,7 +527,7 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 		for(auto &arg : arguments)
             arg->acceptVisitor(this);
 
-        interpreter->sendMessageWithSelector(message->getSelectorOop(), arguments.size());
+        interpreter->sendMessageWithSelector(message->getSelectorOop(), (int)arguments.size());
 	}
 
 	return Oop();
@@ -1099,7 +1099,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
     {
         auto oldArgumentCount = oldLocalContext->getArgumentCount();
         for(auto i = 0; i < temporalVectorCount; ++i)
-            gen.pushTemporal(oldArgumentCount + i);
+            gen.pushTemporal(int(oldArgumentCount + i));
 
     }
 
@@ -1121,11 +1121,11 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 
         if(i < argumentCount)
         {
-            localVar->setTemporalIndex(i);
+            localVar->setTemporalIndex((int)i);
         }
         else
         {
-            localVar->setTemporalIndex(argumentCount + numCopied);
+            localVar->setTemporalIndex(int(argumentCount + numCopied));
             ++numLocals;
             ++numCopied;
         }
@@ -1133,16 +1133,16 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 
     // Reserve space for the locals.
     if(numLocals)
-        gen.pushNClosureTemps(numLocals);
+        gen.pushNClosureTemps((int)numLocals);
 
     // Push the block.
-    gen.pushClosure(numCopied, argumentCount, blockEnd, 0);
+    gen.pushClosure((int)numCopied, (int)argumentCount, blockEnd, 0);
 
     // Generate the inner temporal vector.
     if(capturedCount)
     {
         gen.pushNewArray(capturedCount);
-        gen.popStoreTemporal(argumentCount + temporalVectorCount - 1);
+        gen.popStoreTemporal(int(argumentCount + temporalVectorCount - 1));
 
         // Copy the captured arguments into the temp vector
         for(size_t i = 0; i < argumentCount; ++i)
@@ -1150,7 +1150,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
             auto &localVar = blockLocals[i];
             if(localVar->isCapturedInClosure())
             {
-                gen.pushTemporal(i);
+                gen.pushTemporal((int)i);
                 gen.popStoreTemporalInVector(localVar->getTemporalIndex(), localVar->getTemporalVectorIndex());
             }
         }
@@ -1459,9 +1459,9 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 
 		// Send the message.
         if(isSuper)
-            gen.superSend(selector, arguments.size());
+            gen.superSend(selector, (int)arguments.size());
         else
-		    gen.send(selector, arguments.size());
+		    gen.send(selector, (int)arguments.size());
 	}
 
 	return Oop();
@@ -1494,7 +1494,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
         if(localVar->isCapturedInClosure())
         {
             localVar->setTemporalVectorIndex(temporalVectorCount);
-            localVar->setTemporalIndex(capturedCount++);
+            localVar->setTemporalIndex(int(capturedCount++));
         }
     }
 
@@ -1512,10 +1512,10 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
         if(!localVar->isCapturedInClosure())
         {
             if(i < argumentCount)
-                localVar->setTemporalIndex(i);
+                localVar->setTemporalIndex((int)i);
             else
             {
-                localVar->setTemporalIndex(i + temporalVectorCount);
+                localVar->setTemporalIndex(int(i + temporalVectorCount));
                 ++temporalCount;
             }
         }
@@ -1524,8 +1524,8 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
     // Create the temporal vector
     if(capturedCount)
     {
-        gen.pushNewArray(capturedCount);
-        gen.popStoreTemporal(argumentCount);
+        gen.pushNewArray((int)capturedCount);
+        gen.popStoreTemporal((int)argumentCount);
 
         // Copy the captured arguments into the temp vector
         for(size_t i = 0; i < argumentCount; ++i)
@@ -1533,8 +1533,8 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
             auto &localVar = blockLocals[i];
             if(localVar->isCapturedInClosure())
             {
-                gen.pushTemporal(i);
-                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), argumentCount + localVar->getTemporalVectorIndex());
+                gen.pushTemporal((int)i);
+                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), int(argumentCount + localVar->getTemporalVectorIndex()));
             }
         }
     }

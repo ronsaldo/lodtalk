@@ -45,11 +45,11 @@ void dumpSistaBytecode(uint8_t *buffer, size_t size)
     while(pos < size)
     {
         auto opcode = buffer[pos++];
-        auto size = getSistaBytecodeSize(opcode);
+        auto instructionSize = getSistaBytecodeSize(opcode);
         printf("%s", getSistaBytecodeName(opcode).c_str());
-        if(size > 1)
+        if(instructionSize > 1)
             printf(" %d", buffer[pos++]);
-        if(size > 2)
+        if(instructionSize > 2)
             printf(" %d", buffer[pos++]);
         printf("\n");
     }

@@ -127,7 +127,7 @@ void SpecialRuntimeObjects::createSpecialClassTable()
     specialClassTable.resize(SpecialClassTableSize);
     for(size_t i = 0; i < SpecialClassTableSize; i += 2)
     {
-        specialClassTable[i] = Class::basicNativeNewClass(context, i + 1);
+        specialClassTable[i] = Class::basicNativeNewClass(context, unsigned int(i + 1));
         specialClassTable[i + 1] = Metaclass::basicNativeNewMetaclass(context);
     }
 

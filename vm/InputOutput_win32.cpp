@@ -1,6 +1,7 @@
 #ifdef _WIN32
 
 #include <stdio.h>
+#include "Lodtalk/InterpreterProxy.hpp"
 #include "InputOutput.hpp"
 #include "Method.hpp"
 namespace Lodtalk
@@ -8,17 +9,17 @@ namespace Lodtalk
 
 int OSIO::stStdout(InterpreterProxy *interpreter)
 {
-    return interpreter->returnSmallInteger(STDOUT_FILENO);
+    return interpreter->returnSmallInteger(0);
 }
 
 int OSIO::stStdin(InterpreterProxy *interpreter)
 {
-    return interpreter->returnSmallInteger(STDOUT_FILENO);
+    return interpreter->returnSmallInteger(1);
 }
 
 int OSIO::stStderr(InterpreterProxy *interpreter)
 {
-    return interpreter->returnSmallInteger(STDOUT_FILENO);
+    return interpreter->returnSmallInteger(2);
 }
 
 // Oop bufferOop, Oop offsetOop, Oop sizeOop, Oop fileOop

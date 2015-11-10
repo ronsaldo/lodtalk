@@ -302,7 +302,7 @@ public:
         returnValue(currentReceiver());
     }
 
-    void callNativeMethod(NativeMethod *method, int argumentCount);
+    void callNativeMethod(NativeMethod *method, size_t argumentCount);
 	void activateMethodFrame(CompiledMethod *method);
     void activateBlockClosure(BlockClosure *closure);
 	void fetchFrameData();
@@ -322,17 +322,17 @@ public:
 		return method;
 	}
 
-	Oop getInstanceVariable(int index)
+	Oop getInstanceVariable(size_t index)
 	{
 		return reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index];
 	}
 
-	void setInstanceVariable(int index, Oop value)
+	void setInstanceVariable(size_t index, Oop value)
 	{
 		reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index] = value;
 	}
 
-	Oop getLiteral(int index)
+	Oop getLiteral(size_t index)
 	{
 		return literalArray[index];
 	}
@@ -355,13 +355,13 @@ public:
 		*reinterpret_cast<Oop*> (stack->getFramePointer() + getTemporaryOffset(index)) = value;
 	}
 
-	void pushReceiverVariable(int receiverVarIndex)
+	void pushReceiverVariable(size_t receiverVarIndex)
 	{
 		auto localVar = getInstanceVariable(receiverVarIndex);
 		pushOop(localVar);
 	}
 
-	void pushLiteralVariable(int literalVarIndex)
+	void pushLiteralVariable(size_t literalVarIndex)
 	{
 		auto literal = getLiteral(literalVarIndex);
 
@@ -370,19 +370,19 @@ public:
 		pushOop(literalVar->value);
 	}
 
-	void pushLiteral(int literalIndex)
+	void pushLiteral(size_t literalIndex)
 	{
 		auto literal = getLiteral(literalIndex);
 		pushOop(literal);
 	}
 
-	void pushTemporary(int temporaryIndex)
+	void pushTemporary(size_t temporaryIndex)
 	{
 		auto temporary = getTemporary(temporaryIndex);
 		pushOop(temporary);
 	}
 
-    void storeLiteralVariable(int variableIndex, Oop value)
+    void storeLiteralVariable(size_t variableIndex, Oop value)
     {
         auto literal = getLiteral(variableIndex);
 
@@ -410,9 +410,9 @@ public:
     	return behavior->lookupSelector(selector);
     }
 
-	void sendSelectorArgumentCount(Oop selector, int argumentCount)
+	void sendSelectorArgumentCount(Oop selector, size_t argumentCount)
 	{
-		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
+		assert(argumentCount <= CompiledMethodHeader::ArgumentMask);
 
 		// Get the receiver.
 		auto newReceiver = stack->stackOopAtOffset(argumentCount * sizeof(Oop));
@@ -487,7 +487,7 @@ public:
     }
 
 private:
-    void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
+    void sendLiteralIndexArgumentCount(size_t literalIndex, size_t argumentCount)
     {
         auto selector = getLiteral(literalIndex);
         sendSelectorArgumentCount(selector, argumentCount);
@@ -777,7 +777,7 @@ private:
         fetchNextInstructionOpcode();
         extendB = 0;
 
-        pushOop(Oop::encodeCharacter(value));
+        pushOop(Oop::encodeCharacter((int)value));
 	}
 
 	void interpretPushArrayWithElements()
@@ -839,7 +839,7 @@ private:
 
         if(delta < 0)
         {
-            backwardJump(delta);
+            backwardJump((int)delta);
         }
         else
         {
@@ -859,7 +859,7 @@ private:
         {
             if(delta < 0)
             {
-                backwardJump(delta);
+                backwardJump((int)delta);
             }
             else
             {
@@ -886,7 +886,7 @@ private:
         {
             if(delta < 0)
             {
-                backwardJump(delta);
+                backwardJump((int)delta);
             }
             else
             {
@@ -1016,7 +1016,7 @@ private:
         stack->ensureFrameIsMarried();
 
         // Create the block closure.
-        BlockClosure *blockClosure = BlockClosure::create(context, numCopied);
+        BlockClosure *blockClosure = BlockClosure::create(context, (int)numCopied);
         fetchFrameData(); // For compaction
 
         // Set the closure data.
@@ -1797,7 +1797,7 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	fetchNextInstructionOpcode();
 }
 
-void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, int argumentCount)
+void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, size_t argumentCount)
 {
     // Get the receiver
 	auto receiver = stackOopAtOffset((1 + argumentCount)*sizeof(Oop));
@@ -1834,7 +1834,7 @@ void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, int argument
 
 void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 {
-    int numArguments = closure->numArgs.decodeSmallInteger();
+    int numArguments = (int)closure->numArgs.decodeSmallInteger();
 
     // Get the receiver and the method.
     auto outerContext = closure->getOuterContext();
@@ -2031,8 +2031,7 @@ int StackInterpreterProxy::primitiveFailed()
 
 int StackInterpreterProxy::primitiveFailedWithCode(int errorCode)
 {
-    abort();
-    return -1;
+    LODTALK_UNIMPLEMENTED();
 }
 
 // Basic new

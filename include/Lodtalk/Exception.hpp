@@ -4,6 +4,12 @@
 #include <stdexcept>
 #include "Lodtalk/Definitions.h"
 
+#ifdef _MSC_VER
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#  pragma warning( disable: 4275 )
+#endif
+
 namespace Lodtalk
 {
 /**
@@ -49,5 +55,9 @@ inline void nativeNotYetImplemented()
 }
 
 } // End of namespace Lodtalk
+
+#ifdef _MSC_VER
+#  pragma warning( pop )
+#endif
 
 #endif //LODTALK_EXCEPTION_HPP

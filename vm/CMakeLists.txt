@@ -5,6 +5,20 @@ ADD_FLEX_BISON_DEPENDENCY(LodtalkScanner LodtalkParser)
 include_directories(${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 add_definitions(-DBUILDING_LODTALK_VM)
 
+set(LodtalkVM_HEADERS
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/ClassBuilder.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/ClassFactory.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Collections.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Definitions.h"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Exception.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/InterpreterProxy.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Object.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/ObjectModel.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/SpecialClasses.inc"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Synchronization.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/VMContext.hpp"
+)
+
 set(LodtalkVM_SRC
      AST.cpp
      AST.hpp
@@ -47,4 +61,4 @@ set(LodtalkVM_SRC
      ${FLEX_LodtalkScanner_OUTPUTS}
 )
 
-add_library(LodtalkVM SHARED ${LodtalkVM_SRC})
+add_library(LodtalkVM SHARED ${LodtalkVM_SRC} ${LodtalkVM_HEADERS})

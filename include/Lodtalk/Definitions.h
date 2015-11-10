@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 #define LODTALK_EXPORT_SYMBOL __declspec(dllexport)
-#define LODTALK_IMPORT_SYMBOL __declspec(dllexport)
+#define LODTALK_IMPORT_SYMBOL __declspec(dllimport)
 #else
 #define LODTALK_EXPORT_SYMBOL __attribute__ ((visibility ("default")))
 #define LODTALK_IMPORT_SYMBOL __attribute__ ((visibility ("default")))
@@ -24,8 +24,10 @@
 #define LODTALK_EXTERN_C
 #endif
 
-#ifdef _WIN32
-#pragma warning(disable : 4200)
+#ifdef _MSC_VER
+#pragma warning(disable : 4100) // Unreferenced formal parameter.
+#pragma warning(disable : 4200) // Zero sized array in structure end.
+#pragma warning(disable : 4458) // Local hides instance variable.
 #endif
 
 #if defined(__GNUC__)

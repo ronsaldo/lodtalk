@@ -10,9 +10,9 @@ namespace Lodtalk
 {
 
 // Special object
-UndefinedObject NilObject;
-True TrueObject;
-False FalseObject;
+LODTALK_VM_EXPORT UndefinedObject NilObject;
+LODTALK_VM_EXPORT True TrueObject;
+LODTALK_VM_EXPORT False FalseObject;
 
 // Proto object methods
 SpecialNativeClassFactory ProtoObject::Factory("ProtoObject", SCI_ProtoObject, nullptr, [](ClassBuilder &builder) {
@@ -143,7 +143,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
         if(!value.isSmallInteger())
             nativeError("expected a small integer.");
 
-        data[index] = value.decodeSmallInteger();
+        data[index] = (uint8_t)value.decodeSmallInteger();
     }
     else if(format >= OF_INDEXABLE_16)
     {
@@ -151,7 +151,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
         if(!value.isSmallInteger())
             nativeError("expected a small integer.");
 
-        data[index] = value.decodeSmallInteger();
+        data[index] = (uint16_t)value.decodeSmallInteger();
     }
     else if(format >= OF_INDEXABLE_32)
     {
@@ -160,9 +160,9 @@ int Object::stAtPut(InterpreterProxy *interpreter)
         if(!value.isSmallInteger())
             nativeError("expected a small integer.");
 
-        data[index] = value.decodeSmallInteger();
+        data[index] = (uint32_t)value.decodeSmallInteger();
 #else
-        data[index] = context->positiveInt32ValueOf(value);
+        data[index] = (uint32_t)context->positiveInt32ValueOf(value);
 #endif
     }
     else if(format == OF_INDEXABLE_64)
@@ -392,7 +392,7 @@ int SmallInteger::stPrintString(InterpreterProxy *interpreter)
         if(d <0)
             d = -d;
 
-        buffer[dest++] = '0' + d;
+        buffer[dest++] = char('0' + d);
         temp /= 10;
     } while(temp != 0);
 

@@ -7,6 +7,11 @@
 #include "Lodtalk/ObjectModel.hpp"
 #include "Lodtalk/Object.hpp"
 
+#ifdef _MSC_VER
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
+
 namespace Lodtalk
 {
 class InterpreterProxy;
@@ -99,6 +104,10 @@ private:
     std::unordered_map<std::string, PrimitiveFunction> classSidePrimitiveMethods;
     std::vector<std::string> instanceVariableNames;
 };
+
+#ifdef _MSC_VER
+#  pragma warning( pop )
+#endif
 
 } // End of namespace Lodtalk
 

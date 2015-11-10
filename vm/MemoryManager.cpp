@@ -51,7 +51,7 @@ unsigned int ClassTable::registerClass(Oop clazz)
 
     pageTable[pageIndex][elementIndex] = clazz;
     clazz.header->identityHash = (unsigned int)size;
-    return size++;
+    return unsigned int (size++);
 }
 
 void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
@@ -582,7 +582,7 @@ void GarbageCollector::updatePointersOf(Oop object)
 		if(slotCount == 255)
 		{
 			auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-			slotCount = bigHeader->slotCount;
+			slotCount = (unsigned int)bigHeader->slotCount;
 			headerSize += 8;
 		}
 

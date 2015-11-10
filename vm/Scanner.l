@@ -5,12 +5,39 @@
 
 %{
 #ifdef _WIN32
+
+#pragma warning ( disable : 4100 )
+#pragma warning ( disable : 4127 )
+#pragma warning ( disable : 4244 )
+#pragma warning ( disable : 4505 )
+
+#undef INT8_MIN
+#undef INT16_MIN
+#undef INT32_MIN
+#undef UINT8_MIN
+#undef UINT16_MIN
+#undef UINT32_MIN
+#undef INT8_MAX
+#undef INT16_MAX
+#undef INT32_MAX
+#undef UINT8_MAX
+#undef UINT16_MAX
+#undef UINT32_MAX
+
 #define YY_NO_UNISTD_H
 
-inline bool isatty(int f)
+inline int my_isatty(int f)
 {
-    return false;
+    return 0;
 }
+
+inline int my_fileno(FILE *f)
+{
+    return -1;
+}
+
+#define isatty my_isatty
+#define fileno my_fileno
 
 #endif 
 
@@ -24,9 +51,11 @@ inline bool isatty(int f)
 #define YY_EXTRA_TYPE ParserScannerExtraData *
 
 #define YY_USER_ACTION \
-yylloc->first_line = yylloc->last_line = yylineno; \
-yylloc->first_column = yyextra->columnCount; yylloc->last_column = yyextra->columnCount+yyleng-1; \
-    yyextra->columnCount += yyleng;
+yylloc->first_line = yylloc->last_line = (int)yylineno; \
+yylloc->first_column = yyextra->columnCount; yylloc->last_column = int(yyextra->columnCount+yyleng-1); \
+    yyextra->columnCount += (int)yyleng;
+
+
 %}
 
 %%

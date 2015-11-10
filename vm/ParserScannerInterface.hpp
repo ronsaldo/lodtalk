@@ -24,4 +24,17 @@ Node *parseDoItFromFile(VMContext *context, FILE *input);
 } // End of namespace AST
 } // End of names Lodtalk
 
+#ifdef _WIN32
+inline char *my_strdup(const char *string)
+{
+    size_t length = strlen(string);
+    char *buffer = (char*)malloc(length + 1);
+    strncpy(buffer, string, length);
+    buffer[length] = 0;
+    return buffer;
+}
+
+#define strdup my_strdup
+#endif
+
 #endif //LODTALK_PARSER_SCANNER_INTERFACE_HPP

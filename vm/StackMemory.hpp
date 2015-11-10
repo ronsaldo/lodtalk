@@ -29,15 +29,15 @@ namespace InterpreterStackFrame
 inline uintptr_t encodeFrameMetaData(bool hasContext, bool isBlock, size_t numArguments)
 {
 	return (numArguments & 0xFF) |
-		  ((isBlock & 0xFF) << 8) |
-		  ((hasContext & 0xFF) << 16);
+		  ((isBlock ? 1 : 0) << 8) |
+		  ((hasContext ? 1 : 0) << 16);
 }
 
 inline void decodeFrameMetaData(uintptr_t metadata, bool &hasContext, bool &isBlock, size_t &numArguments)
 {
 	numArguments = metadata & 0xFF;
-	isBlock = (metadata >> 8) & 0xFF;
-	hasContext = (metadata >> 16) & 0xFF;
+	isBlock = ((metadata >> 8) & 0xFF) != 0;
+	hasContext = ((metadata >> 16) & 0xFF) != 0;
 }
 
 
@@ -155,12 +155,12 @@ public:
 
     inline bool isBlockActivation()
     {
-        return getMetadata() & 0xFF00;
+        return (getMetadata() & 0xFF00) != 0;
     }
 
     inline bool hasContext()
     {
-        return getMetadata() & 0xFF000;
+        return (getMetadata() & 0xFF0000) != 0;
     }
 
     inline void ensureFrameIsMarried(VMContext *context)
@@ -258,7 +258,7 @@ public:
 		return res;
 	}
 
-	inline void popMultiplesOops(int count)
+	inline void popMultiplesOops(size_t count)
 	{
 		stackFrame.stackPointer += count * sizeof(Oop);
 	}

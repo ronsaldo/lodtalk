@@ -13,7 +13,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Output paths.
 set(CMAKE_DEBUG_POSTFIX "_d")
- 
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/dist")
 set(Lodtalk_DATA_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/dist/data")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -22,9 +22,12 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	# using Visual Studio C++
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+
+	# Do not deprecate the C runtime library.
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -pthread")
-	
+
 	# Export symbols from applications.
 	#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--export-dynamic")
 endif()
@@ -44,9 +47,10 @@ set(EXECUTABLE_OUTPUT_PATH "${Lodtalk_BINARY_DIR}/dist")
 set(LIBRARY_OUTPUT_PATH "${Lodtalk_BINARY_DIR}/dist")
 
 # Add the current directory.
+set(LODTALK_VM_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 include_directories(
 .
-"${PROJECT_SOURCE_DIR}/include"
+"${LODTALK_VM_INCLUDE_DIR}"
 )
 
 # Build the vm

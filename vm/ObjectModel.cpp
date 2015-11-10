@@ -42,7 +42,7 @@ ObjectHeader *VMContext::newObject(size_t fixedSlotCount, size_t indexableSize, 
 			size_t mask = (divisor - 1);
 
 		 	indexableSlotCount = ((indexableSize + divisor - 1) & (~mask)) / divisor;
-			indexableFormatExtraBits = indexableSize & mask;
+			indexableFormatExtraBits = int(indexableSize & mask);
 			assert(indexableSize <= indexableSlotCount*divisor);
 		}
 	}
@@ -94,7 +94,7 @@ ObjectHeader *VMContext::newObject(size_t fixedSlotCount, size_t indexableSize, 
 
 ObjectHeader *VMContext::basicNativeNewFromClassIndex(size_t classIndex)
 {
-    auto clazz = getClassFromIndex(classIndex);
+    auto clazz = getClassFromIndex((int)classIndex);
     assert(isClassOrMetaclass(clazz));
     auto desc = reinterpret_cast<ClassDescription*> (clazz.pointer);
     return reinterpret_cast<ObjectHeader*> (desc->basicNativeNew(this));
@@ -158,7 +158,7 @@ Oop VMContext::signedInt64ObjectFor(int64_t value)
 uint32_t VMContext::positiveInt32ValueOf(Oop value)
 {
     if(value.isSmallInteger())
-        return value.decodeSmallInteger();
+        return (uint32_t)value.decodeSmallInteger();
     LODTALK_UNIMPLEMENTED();
 }
 
@@ -260,7 +260,7 @@ Oop VMContext::setGlobalVariable(Oop symbol, Oop value)
 
 Oop VMContext::getGlobalFromName(const char *name)
 {
-	return getGlobalFromName(name);
+	return getGlobalFromSymbol(makeByteSymbol(name));
 }
 
 Oop VMContext::getGlobalFromSymbol(Oop symbol)

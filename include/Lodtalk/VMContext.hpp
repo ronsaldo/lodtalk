@@ -8,6 +8,11 @@
 #include "Lodtalk/Definitions.h"
 #include "Lodtalk/ObjectModel.hpp"
 
+#ifdef _MSC_VER
+#  pragma warning( push )
+#  pragma warning( disable: 4251 )
+#endif
+
 namespace Lodtalk
 {
 
@@ -130,7 +135,7 @@ LODTALK_VM_EXPORT VMContext *getCurrentContext();
 LODTALK_VM_EXPORT void setCurrentContext(VMContext *context);
 
 // Garbage collection interface
-class WithoutGC
+class LODTALK_VM_EXPORT WithoutGC
 {
 public:
     WithoutGC(VMContext *context)
@@ -147,6 +152,10 @@ public:
 private:
     VMContext *context;
 };
+
+#ifdef _MSC_VER
+#  pragma warning( pop )
+#endif
 
 } // End of namespace VMContext
 #endif //LODTALK_VMCONTEXT_HPP_

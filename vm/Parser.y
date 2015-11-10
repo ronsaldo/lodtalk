@@ -32,6 +32,16 @@ inline std::string readStringValue(char* stringValue)
     return result;
 }
 
+#ifdef _WIN32
+
+#pragma warning ( disable : 4100 )
+#pragma warning ( disable : 4127 )
+#pragma warning ( disable : 4244 )
+#pragma warning ( disable : 4505 )
+#pragma warning ( disable : 4702 )
+
+#endif
+
 %}
 
 %union {

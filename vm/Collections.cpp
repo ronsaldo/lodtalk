@@ -110,7 +110,7 @@ Oop ByteString::splitVariableNames(VMContext *context, const std::string &string
 		{
 			// I am not in a token.
 			if(c > ' ')
-				tokenStart = i;
+				tokenStart = (int)i;
 		}
 		else
 		{

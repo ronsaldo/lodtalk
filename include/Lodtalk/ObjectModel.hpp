@@ -347,11 +347,11 @@ class UndefinedObject;
 class True;
 class False;
 
-extern UndefinedObject NilObject;
-extern True TrueObject;
-extern False FalseObject;
+extern LODTALK_VM_EXPORT UndefinedObject NilObject;
+extern LODTALK_VM_EXPORT True TrueObject;
+extern LODTALK_VM_EXPORT False FalseObject;
 
-struct Oop
+struct LODTALK_VM_EXPORT Oop
 {
 private:
 	constexpr Oop(uint8_t *pointer) : pointer(pointer) {}
@@ -534,7 +534,6 @@ public:
 		}
 
 		LODTALK_UNIMPLEMENTED();
-		abort();
 	}
 
     inline size_t getNumberOfVariableElements(VMContext *context) const
@@ -578,19 +577,19 @@ inline constexpr Oop falseOop()
 // Has primitive : 1 bit
 // Number of temporals: 6 bits
 // Number of arguments: 4 bits
-struct CompiledMethodHeader
+struct LODTALK_VM_EXPORT CompiledMethodHeader
 {
-	static const size_t LiteralMask = (1<<16) -1;
-	static const size_t LiteralShift = 1;
-	static const size_t HasPrimitiveBit = (1<<17);
-	static const size_t NeedsLargeFrameBit = (1<<18);
-	static const size_t TemporalShift = 19;
-	static const size_t TemporalMask = (1<<6) - 1;
-	static const size_t ArgumentShift = 25;
-	static const size_t ArgumentMask = (1<<4) - 1;
-	static const size_t ReservedBit = 1<<29;
-	static const size_t FlagBit = 1<<30;
-	static const size_t AlternateBytecodeBit = 1<<31;
+	static const size_t LiteralMask = (1u<<16) -1;
+	static const size_t LiteralShift = 1u;
+	static const size_t HasPrimitiveBit = (1u<<17);
+	static const size_t NeedsLargeFrameBit = (1u<<18);
+	static const size_t TemporalShift = 19u;
+	static const size_t TemporalMask = (1u<<6) - 1;
+	static const size_t ArgumentShift = 25u;
+	static const size_t ArgumentMask = (1u<<4) - 1;
+	static const size_t ReservedBit = 1u<<29;
+	static const size_t FlagBit = 1u<<30;
+	static const size_t AlternateBytecodeBit = 1u<<31;
 
 	constexpr CompiledMethodHeader(Oop oop) : oop(oop) {}
 
@@ -623,7 +622,7 @@ struct CompiledMethodHeader
 
 	bool needsLargeFrame() const
 	{
-		return oop.uintValue | NeedsLargeFrameBit;
+		return (oop.uintValue | NeedsLargeFrameBit) != 0;
 	}
 
 	void setLargeFrame(bool value)
@@ -669,11 +668,11 @@ class ClassDescription;
 inline int identityHashOf(Oop obj)
 {
 	if(obj.isSmallInteger())
-		return obj.decodeSmallInteger();
+		return (int)obj.decodeSmallInteger();
     else if (obj.isCharacter())
         return obj.decodeCharacter();
     else if (obj.isSmallFloat())
-        return obj.uintValue >> ObjectTag::SmallFloatShift;
+        return int(obj.uintValue >> ObjectTag::SmallFloatShift);
 	return obj.header->identityHash;
 }
 

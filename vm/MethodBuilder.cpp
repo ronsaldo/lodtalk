@@ -60,7 +60,7 @@ public:
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
-		*buffer++ = bytecode;
+		*buffer++ = (uint8_t)bytecode;
 		return buffer;
 	}
 
@@ -86,7 +86,7 @@ public:
 	{
 		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
 		{
-			*buffer++ = BytecodeSet::PushReceiverVariableShortFirst + index;
+			*buffer++ = uint8_t(BytecodeSet::PushReceiverVariableShortFirst + index);
 			return buffer;
 		}
 
@@ -145,7 +145,7 @@ public:
 	{
 		if(index < BytecodeSet::PushLiteralShortRangeSize)
 		{
-			*buffer++ = BytecodeSet::PushLiteralShortFirst + index;
+			*buffer++ = uint8_t(BytecodeSet::PushLiteralShortFirst + index);
 			return buffer;
 		}
 
@@ -178,7 +178,7 @@ public:
 	{
 		if(index < BytecodeSet::PushLiteralVariableShortRangeSize)
 		{
-			*buffer++ = BytecodeSet::PushLiteralVariableShortFirst + index;
+			*buffer++ = uint8_t(BytecodeSet::PushLiteralVariableShortFirst + index);
 			return buffer;
 		}
 
@@ -236,12 +236,12 @@ public:
 	{
 		if(index < 12)
 		{
-			*buffer++ = BytecodeSet::PushTempShortFirst + index;
+			*buffer++ = uint8_t(BytecodeSet::PushTempShortFirst + index);
 			return buffer;
 		}
 
 		*buffer++ = BytecodeSet::PushTemporary;
-		*buffer++ = index;
+		*buffer++ = (uint8_t)index;
 		return buffer;
 	}
 
@@ -265,7 +265,7 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::StoreTemporalVariable;
-        *buffer++ = index;
+        *buffer++ = (uint8_t)index;
         return buffer;
 	}
 
@@ -290,12 +290,12 @@ public:
 	{
         if(index < BytecodeSet::PopStoreTemporalVariableShortRangeSize)
         {
-            *buffer++ = BytecodeSet::PopStoreTemporalVariableShortFirst + index;
+            *buffer++ = uint8_t(BytecodeSet::PopStoreTemporalVariableShortFirst + index);
             return buffer;
         }
 
         *buffer++ = BytecodeSet::PopStoreTemporalVariable;
-        *buffer++ = index;
+        *buffer++ = (uint8_t)index;
         return buffer;
 	}
 
@@ -321,7 +321,7 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::PushArrayWithElements;
-        *buffer++ = count;
+        *buffer++ = (uint8_t)count;
         return buffer;
 	}
 
@@ -345,8 +345,8 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::PushTemporaryInVector;
-        *buffer++ = index;
-        *buffer++ = vectorIndex;
+        *buffer++ = (uint8_t)index;
+        *buffer++ = (uint8_t)vectorIndex;
         return buffer;
 	}
 
@@ -371,8 +371,8 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::StoreTemporalInVector;
-        *buffer++ = index;
-        *buffer++ = vectorIndex;
+        *buffer++ = (uint8_t)index;
+        *buffer++ = (uint8_t)vectorIndex;
         return buffer;
 	}
 
@@ -397,8 +397,8 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::PopStoreTemporalInVector;
-        *buffer++ = index;
-        *buffer++ = vectorIndex;
+        *buffer++ = (uint8_t)index;
+        *buffer++ = (uint8_t)vectorIndex;
         return buffer;
 	}
 
@@ -423,7 +423,7 @@ public:
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
         *buffer++ = BytecodeSet::PushNTemps;
-        *buffer++ = count;
+        *buffer++ = (uint8_t)count;
         return buffer;
 	}
 
@@ -466,7 +466,7 @@ protected:
 
     int blockSize()
     {
-        return blockEnd->getLastPosition() - getLastPosition() - getSize();
+        return int(blockEnd->getLastPosition() - getLastPosition() - getSize());
     }
 
     int extendBValue()
@@ -502,17 +502,17 @@ public:
 	{
 		if(argumentCount == 0 && selectorIndex < BytecodeSet::SendShortArgs0RangeSize)
 		{
-			*buffer++ = BytecodeSet::SendShortArgs0First + selectorIndex;
+			*buffer++ = uint8_t(BytecodeSet::SendShortArgs0First + selectorIndex);
 			return buffer;
 		}
-		if(argumentCount == 1 && selectorIndex < BytecodeSet::SendShortArgs0RangeSize)
+		if(argumentCount == 1 && selectorIndex < BytecodeSet::SendShortArgs1RangeSize)
 		{
-			*buffer++ = BytecodeSet::SendShortArgs1First + selectorIndex;
+			*buffer++ = uint8_t(BytecodeSet::SendShortArgs1First + selectorIndex);
 			return buffer;
 		}
-		if(argumentCount == 2 && selectorIndex < BytecodeSet::SendShortArgs0RangeSize)
+		if(argumentCount == 2 && selectorIndex < BytecodeSet::SendShortArgs2RangeSize)
 		{
-			*buffer++ = BytecodeSet::SendShortArgs2First + selectorIndex;
+			*buffer++ = uint8_t(BytecodeSet::SendShortArgs2First + selectorIndex);
 			return buffer;
 		}
 
@@ -589,7 +589,7 @@ public:
 
         if(1 <= delta && delta <= 8)
         {
-            *buffer++ = BytecodeSet::JumpShortFirst + delta - 1;
+            *buffer++ = uint8_t(BytecodeSet::JumpShortFirst + delta - 1);
             return buffer;
         }
 
@@ -645,9 +645,9 @@ public:
         if(1 <= delta && delta <= 8)
         {
             if(condition)
-                *buffer++ = BytecodeSet::JumpOnTrueShortFirst + delta - 1;
+                *buffer++ = uint8_t(BytecodeSet::JumpOnTrueShortFirst + delta - 1);
             else
-                *buffer++ = BytecodeSet::JumpOnFalseShortFirst + delta - 1;
+                *buffer++ = uint8_t(BytecodeSet::JumpOnFalseShortFirst + delta - 1);
             return buffer;
         }
 
@@ -884,12 +884,12 @@ InstructionNode *Assembler::pushLiteral(Oop literal)
     if(literal == Oop::encodeSmallInteger(0))
         return pushZero();
 
-	return pushLiteralIndex(addLiteral(literal));
+	return pushLiteralIndex((int)addLiteral(literal));
 }
 
 InstructionNode *Assembler::pushLiteralVariable(Oop literalVariable)
 {
-	return pushLiteralVariableIndex(addLiteral(literalVariable));
+	return pushLiteralVariableIndex((int)addLiteral(literalVariable));
 }
 
 InstructionNode *Assembler::pushReceiverVariableIndex(int variableIndex)
@@ -944,7 +944,7 @@ InstructionNode *Assembler::popStoreTemporal(int temporalIndex)
 
 InstructionNode *Assembler::storeLiteralVariable(Oop literalVariable)
 {
-    return storeLiteralVariableIndex(addLiteral(literalVariable));
+    return storeLiteralVariableIndex((int)addLiteral(literalVariable));
 }
 
 InstructionNode *Assembler::pushNClosureTemps(int temporalCount)
@@ -1060,12 +1060,12 @@ InstructionNode *Assembler::send(Oop selector, int argumentCount)
         if(selector == specialSelector)
             return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageAdd + i, false));
     }
-	return addInstruction(new SendMessage(addLiteral(selector), argumentCount));
+	return addInstruction(new SendMessage((int)addLiteral(selector), argumentCount));
 }
 
 InstructionNode *Assembler::superSend(Oop selector, int argumentCount)
 {
-	return addInstruction(new SuperSendMessage(addLiteral(selector), argumentCount));
+	return addInstruction(new SuperSendMessage((int)addLiteral(selector), argumentCount));
 }
 
 InstructionNode *Assembler::jump(Label *destination)

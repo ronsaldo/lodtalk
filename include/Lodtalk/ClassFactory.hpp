@@ -1,7 +1,6 @@
 #ifndef LODTALK_CLASS_FACTORY_HPP
 #define LODTALK_CLASS_FACTORY_HPP
 
-#include <functional>
 #include "Lodtalk/Definitions.h"
 
 namespace Lodtalk
@@ -36,10 +35,10 @@ LODTALK_VM_EXPORT void unregisterClassFactory(AbstractClassFactory *factory);
 /**
  * Native class factory.
  */
-class NativeClassFactory: public AbstractClassFactory
+class LODTALK_VM_EXPORT NativeClassFactory: public AbstractClassFactory
 {
 public:
-    typedef std::function<void (ClassBuilder &builder)> BuildFunction;
+    typedef void (*BuildFunction) (ClassBuilder &builder);
 
     NativeClassFactory(const char *name, AbstractClassFactory *superClass, const BuildFunction &buildFunction)
         : name(name), superClass(superClass), buildFunction(buildFunction)
@@ -81,7 +80,7 @@ private:
 /**
  * Special native class factory
  */
-class SpecialNativeClassFactory: public NativeClassFactory
+class LODTALK_VM_EXPORT SpecialNativeClassFactory: public NativeClassFactory
 {
 public:
     SpecialNativeClassFactory(const char *name, int specialClassIndex, AbstractClassFactory *superClass, const BuildFunction &buildFunction)
