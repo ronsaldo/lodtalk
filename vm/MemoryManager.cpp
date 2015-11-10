@@ -104,22 +104,25 @@ struct AllocatedObject
 #ifdef _WIN32
 inline uint8_t *reserveVirtualAddressSpace(size_t size)
 {
-    return (uint8_t*)VirtualAlloc(nullptr, size, MEM_RESERVE, 0);
+    return (uint8_t*)VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_NOACCESS);
 }
 
 inline bool allocateVirtualAddressRegion(uint8_t *addressSpace, size_t offset, size_t size)
 {
-    LODTALK_UNIMPLEMENTED();
+    auto result = VirtualAlloc(addressSpace + offset, size, MEM_COMMIT, PAGE_READWRITE);
+    return result == addressSpace + offset;
 }
 
 inline bool freeVirtualAddressRegion(uint8_t *addressSpace, size_t offset, size_t size)
 {
-    LODTALK_UNIMPLEMENTED();
+    return VirtualFree(addressSpace + offset, size, MEM_DECOMMIT) == TRUE;
 }
 
 inline size_t getPageSize()
 {
-    LODTALK_UNIMPLEMENTED();
+    SYSTEM_INFO info;
+    GetSystemInfo(&info);
+    return info.dwPageSize;
 }
 
 #else
@@ -215,7 +218,7 @@ uint8_t *VMHeap::allocate(size_t objectSize)
     auto result = addressSpace + size;
 
     // Check the current capacity
-    if(newHeapSize < capacity)
+    if(newHeapSize <= capacity)
     {
         size = newHeapSize;
         return result;

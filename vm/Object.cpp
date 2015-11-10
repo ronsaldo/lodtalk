@@ -470,4 +470,30 @@ SpecialNativeClassFactory SmalltalkImage::Factory("SmalltalkImage", SCI_Smalltal
         .addInstanceVariables("globals");
 });
 
+// External handle
+ExternalHandle *ExternalHandle::create(VMContext *context, void *pointer)
+{
+    auto handle = reinterpret_cast<ExternalHandle*> (context->newObject(0, sizeof(pointer), OF_INDEXABLE_8, SCI_ExternalHandle));
+    handle->pointer = pointer;
+    return handle;
+}
+
+SpecialNativeClassFactory ExternalHandle::Factory("ExternalHandle", SCI_ExternalHandle, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
+
+// External pointer
+ExternalPointer *ExternalPointer::create(VMContext *context, void *pointer)
+{
+    auto externalPointer = reinterpret_cast<ExternalPointer*> (context->newObject(0, sizeof(pointer), OF_INDEXABLE_8, SCI_ExternalPointer));
+    externalPointer->pointer = pointer;
+    return externalPointer;
+}
+
+SpecialNativeClassFactory ExternalPointer::Factory("ExternalPointer", SCI_ExternalPointer, &ExternalHandle::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8();
+});
+
 } // End of namespace Lodtalk

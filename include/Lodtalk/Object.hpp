@@ -365,6 +365,30 @@ public:
     Oop globals;
 };
 
+/**
+ * External handle
+ */
+class LODTALK_VM_EXPORT ExternalHandle: public Object
+{
+public:
+    static SpecialNativeClassFactory Factory;
+
+    static ExternalHandle *create(VMContext *context, void *pointer);
+
+    void *pointer;
+};
+
+/**
+ * External pointer
+ */
+class LODTALK_VM_EXPORT ExternalPointer: public ExternalHandle
+{
+public:
+    static SpecialNativeClassFactory Factory;
+
+    static ExternalPointer *create(VMContext *context, void *pointer);
+};
+
 // The nil oop
 inline bool isNil(ProtoObject *obj)
 {

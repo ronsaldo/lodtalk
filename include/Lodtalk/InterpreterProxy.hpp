@@ -37,6 +37,8 @@ public:
     virtual int returnReceiver() = 0;
     virtual int returnSmallInteger(SmallIntegerValue value) = 0;
     virtual int returnOop(Oop value) = 0;
+    virtual int returnExternalHandle(void *handle) = 0;
+    virtual int returnExternalPointer(void *pointer) = 0;
 
     // Temporaries
     virtual size_t getArgumentCount() = 0;

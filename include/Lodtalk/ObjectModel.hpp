@@ -183,6 +183,23 @@ enum class CompilerOptimizedSelector
     CompilerMessageCount,
 };
 
+enum SpecialObjectIndex
+{
+    SOI_Nil = 0,
+    SOI_True,
+    SOI_False,
+};
+
+enum SpecialClassesIndex
+{
+#define SPECIAL_CLASS_NAME(className) \
+	SCI_ ## className, \
+	SMCI_ ## className,
+#include "Lodtalk/SpecialClasses.inc"
+#undef SPECIAL_CLASS_NAME
+    SpecialClassTableSize
+};
+
 inline size_t variableSlotSizeFor(ObjectFormat format)
 {
 	switch(format)
@@ -470,6 +487,28 @@ public:
         LODTALK_UNIMPLEMENTED();
     }
 
+    inline bool isExternalHandle() const
+    {
+        return isPointer() && header->classIndex == SCI_ExternalHandle;
+    }
+
+    inline bool isExternalPointer() const
+    {
+        return isPointer() && header->classIndex == SCI_ExternalPointer;
+    }
+
+    inline void *decodeExternalHandle()
+    {
+        assert(isExternalHandle());
+        return *reinterpret_cast<void**> (getFirstFieldPointer());
+    }
+
+    inline void *decodeExternalPointer()
+    {
+        assert(isExternalPointer());
+        return *reinterpret_cast<void**> (getFirstFieldPointer());
+    }
+
 	bool operator==(const Oop &o) const
 	{
 		return pointer == o.pointer;
@@ -643,23 +682,6 @@ struct BigObjectHeader
 {
 	ObjectHeader header;
 	uint64_t slotCount;
-};
-
-enum SpecialObjectIndex
-{
-	SOI_Nil = 0,
-	SOI_True,
-	SOI_False,
-};
-
-enum SpecialClassesIndex
-{
-#define SPECIAL_CLASS_NAME(className) \
-	SCI_ ## className, \
-	SMCI_ ## className,
-#include "Lodtalk/SpecialClasses.inc"
-#undef SPECIAL_CLASS_NAME
-    SpecialClassTableSize
 };
 
 class ClassDescription;

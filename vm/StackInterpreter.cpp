@@ -45,6 +45,8 @@ public:
     virtual int returnReceiver() override;
     virtual int returnSmallInteger(SmallIntegerValue value) override;
     virtual int returnOop(Oop value) override;
+    virtual int returnExternalHandle(void *handle) override;
+    virtual int returnExternalPointer(void *pointer) override;
 
     // Temporaries
     virtual size_t getArgumentCount() override;
@@ -1861,7 +1863,7 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 	pushOop(receiver);
 
     // Copy the elements
-    auto copiedElements = closure->getNumberOfElements();
+    auto copiedElements = closure->getNumberOfElements() - 3;
     for(size_t i = 0; i < copiedElements; ++i)
         pushOop(closure->copiedData[i]);
 
@@ -1996,6 +1998,20 @@ int StackInterpreterProxy::returnSmallInteger(SmallIntegerValue value)
 int StackInterpreterProxy::returnOop(Oop value)
 {
     interpreter->returnValue(value);
+    return 0;
+}
+
+int StackInterpreterProxy::returnExternalHandle(void *handle)
+{
+    auto handleObject = ExternalHandle::create(getContext(), handle);
+    interpreter->returnValue(Oop::fromPointer(handleObject));
+    return 0;
+}
+
+int StackInterpreterProxy::returnExternalPointer(void *pointer)
+{
+    auto pointerObject = ExternalPointer::create(getContext(), pointer);
+    interpreter->returnValue(Oop::fromPointer(pointerObject));
     return 0;
 }
 

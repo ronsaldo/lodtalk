@@ -63,3 +63,6 @@ SPECIAL_CLASS_NAME(MethodASTHandle)
 SPECIAL_CLASS_NAME(StackMemoryCommitedPage)
 
 SPECIAL_CLASS_NAME(SmalltalkImage)
+
+SPECIAL_CLASS_NAME(ExternalHandle)
+SPECIAL_CLASS_NAME(ExternalPointer)
