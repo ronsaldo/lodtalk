@@ -33,6 +33,9 @@ public:
     virtual Oop getThisContext() = 0;
 
     // Returning
+    virtual int returnNil() = 0;
+    virtual int returnTrue() = 0;
+    virtual int returnFalse() = 0;
     virtual int returnTop() = 0;
     virtual int returnReceiver() = 0;
     virtual int returnSmallInteger(SmallIntegerValue value) = 0;

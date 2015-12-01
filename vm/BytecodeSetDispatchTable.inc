@@ -232,6 +232,7 @@ case 242: BYTECODE_DISPATCH_NAME(PopStoreTemporalVariable)(); break;
 case 243: BYTECODE_DISPATCH_NAME(StoreReceiverVariable)(); break;
 case 244: BYTECODE_DISPATCH_NAME(StoreLiteralVariable)(); break;
 case 245: BYTECODE_DISPATCH_NAME(StoreTemporalVariable)(); break;
+case 248: BYTECODE_DISPATCH_NAME(CallPrimitive)(); break;
 case 250: BYTECODE_DISPATCH_NAME(PushClosure)(); break;
 case 251: BYTECODE_DISPATCH_NAME(PushTemporaryInVector)(); break;
 case 252: BYTECODE_DISPATCH_NAME(StoreTemporalInVector)(); break;

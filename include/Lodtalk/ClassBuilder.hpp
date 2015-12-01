@@ -76,6 +76,9 @@ public:
 
     ClassBuilder &addClassMethod(const char *name, PrimitiveFunction primitive);
     ClassBuilder &addMethod(const char *name, PrimitiveFunction primitive);
+    ClassBuilder &addPrimitiveClassMethod(int primitiveNumber, const char *name, PrimitiveFunction primitive);
+    ClassBuilder &addPrimitiveMethod(int primitiveNumber, const char *name, PrimitiveFunction primitive);
+
     ClassBuilder &addInstanceVariable(const char *name);
 
     template<typename... Args>

@@ -273,6 +273,9 @@
         "opcode" : 245
     },
 
+    "callPrimitive" : {
+        "opcode" : 248
+    },
     "pushClosure" : {
         "opcode" : 250
     },
@@ -286,4 +289,3 @@
         "opcode" : 253
     }
 }
-

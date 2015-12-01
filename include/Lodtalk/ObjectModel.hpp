@@ -145,6 +145,7 @@ enum class SpecialMessageSelector
 
     // Does not understand
     DoesNotUnderstand,
+    NativeMethodFailed,
 
     SpecialMessageCount,
     SpecialMessageOptimizedCount = BasicNew,
@@ -632,7 +633,7 @@ struct LODTALK_VM_EXPORT CompiledMethodHeader
 
 	constexpr CompiledMethodHeader(Oop oop) : oop(oop) {}
 
-	static CompiledMethodHeader create(size_t literalCount, size_t temporalCount, size_t argumentCount)
+	static CompiledMethodHeader create(size_t literalCount, size_t temporalCount, size_t argumentCount, size_t extraFlags)
 	{
 		assert(literalCount <= LiteralMask);
 		assert(temporalCount <= TemporalMask);
@@ -641,7 +642,8 @@ struct LODTALK_VM_EXPORT CompiledMethodHeader
 		return Oop::fromRawUIntPtr(1 |
 		((literalCount & LiteralMask) << LiteralShift) |
 		((temporalCount & TemporalMask) << TemporalShift) |
-		((argumentCount & ArgumentMask) << ArgumentShift));
+		((argumentCount & ArgumentMask) << ArgumentShift) |
+        extraFlags);
 	}
 
 	size_t getLiteralCount() const

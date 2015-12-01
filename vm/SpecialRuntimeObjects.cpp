@@ -93,6 +93,7 @@ void SpecialRuntimeObjects::createSpecialObjectTable()
 
     // Does not understand
     specialObjectTable.push_back(makeSelector("doesNotUnderstand:"));
+    specialObjectTable.push_back(makeSelector("nativeMethodFailed:"));
 
     specialMessageSelectorCount = specialObjectTable.size() - specialMessageSelectorFirst;
     assert(specialMessageSelectorCount == (size_t)SpecialMessageSelector::SpecialMessageCount);

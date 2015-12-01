@@ -104,7 +104,7 @@ SpecialNativeClassFactory CompiledMethod::Factory("CompiledMethod", SCI_Compiled
         .compiledMethodFormat();
 
     builder
-        .addClassMethod("newMethod:header:", CompiledMethod::stNewMethodWithHeader);
+        .addPrimitiveClassMethod(79, "newMethod:header:", CompiledMethod::stNewMethodWithHeader);
 
     builder
         .addMethod("dump", CompiledMethod::stDump);

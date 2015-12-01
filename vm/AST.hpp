@@ -55,6 +55,8 @@ public:
 	virtual Oop visitMessageSendNode(MessageSendNode *node) = 0;
 	virtual Oop visitMethodAST(MethodAST *node) = 0;
 	virtual Oop visitMethodHeader(MethodHeader *node) = 0;
+    virtual Oop visitPragmaList(PragmaList *node) = 0;
+    virtual Oop visitPragmaDefinition(PragmaDefinition *node) = 0;
 	virtual Oop visitReturnStatement(ReturnStatement *node) = 0;
 	virtual Oop visitSequenceNode(SequenceNode *node) = 0;
 	virtual Oop visitSelfReference(SelfReference *node) = 0;
@@ -73,6 +75,7 @@ public:
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor) = 0;
 
+    virtual bool isLiteral() const;
 	virtual bool isIdentifierExpression() const;
     virtual bool isBlockExpression() const;
 	virtual bool isReturnStatement() const;
@@ -90,6 +93,8 @@ public:
 	~LiteralNode();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
+
+    virtual bool isLiteral() const override;
 
 	Oop getValue() const;
 
@@ -395,13 +400,15 @@ private:
 /**
  * Pragma list
  */
-class PragmaList
+class PragmaList: public Node
 {
 public:
     typedef std::vector<PragmaDefinition*> Pragmas;
 
     PragmaList();
     ~PragmaList();
+
+    virtual Oop acceptVisitor(ASTVisitor *visitor);
 
     const Pragmas &getPragmas() const;
     void addPragma(PragmaDefinition *pragmaDefinition);
@@ -413,13 +420,15 @@ private:
 /**
  * Pragma definition.
  */
-class PragmaDefinition
+class PragmaDefinition: public Node
 {
 public:
     typedef std::vector<Node*> Parameters;
 
     PragmaDefinition(VMContext *context, const std::string &selector = std::string());
     ~PragmaDefinition();
+
+    virtual Oop acceptVisitor(ASTVisitor *visitor);
 
     void appendParameter(const std::string &keyword, Node *node);
 

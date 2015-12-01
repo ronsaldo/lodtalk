@@ -3,6 +3,24 @@ self class: Object.
 
 self category: 'accessing'.
 self method [
+at: index
+	<primitive: 60>
+    self error: 'basicAt: failed'.
+].
+
+self method [
+at: index put: anObject
+	<primitive: 61>
+    self error: 'basicAt:put: failed'.
+].
+
+self method [
+size
+	<primitive: 62>
+    self error: 'basicSize failed'.
+].
+
+self method [
 basicAt: index
 	<primitive: 60>
     self error: 'basicAt: failed'.

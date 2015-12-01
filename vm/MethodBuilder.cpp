@@ -574,6 +574,33 @@ private:
 	int argumentCount;
 };
 
+// Call primitive instruction
+class CallPrimitiveInstruction: public InstructionNode
+{
+public:
+    CallPrimitiveInstruction(int primitiveIndex)
+        : primitiveIndex(primitiveIndex)
+    {
+    }
+
+    virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::CallPrimitive;
+        *buffer++ = primitiveIndex & 0xFF;
+        *buffer++ = (primitiveIndex >> 8) & 0xFF;
+		return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 3;
+	}
+
+private:
+    int primitiveIndex;
+};
+
 // UnconditionalJump
 class UnconditionalJump: public InstructionNode
 {
@@ -777,7 +804,7 @@ size_t Assembler::computeInstructionsSize()
 	return currentSize;
 }
 
-CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extraSize)
+CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, bool hasPrimitive, size_t extraSize)
 {
 	// Compute the method sizes.
 	auto instructionsSize = computeInstructionsSize();
@@ -785,7 +812,11 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 	auto methodSize = literalCount*sizeof(void*) + instructionsSize + extraSize;
 
 	// Create the method header
-	auto methodHeader = CompiledMethodHeader::create(literalCount, temporalCount, argumentCount);
+    size_t extraFlags = 0;
+    if(hasPrimitive)
+        extraFlags |= CompiledMethodHeader::HasPrimitiveBit;
+
+	auto methodHeader = CompiledMethodHeader::create(literalCount, temporalCount, argumentCount, extraFlags);
 
 	// Create the compiled method
 	auto compiledMethod = CompiledMethod::newMethodWithHeader(context, methodSize, methodHeader);
@@ -1050,6 +1081,11 @@ InstructionNode *Assembler::notEqual()
 InstructionNode *Assembler::identityEqual()
 {
     return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageIdentityEqual, false));
+}
+
+InstructionNode *Assembler::callPrimitive(int primitiveIndex)
+{
+    return addInstruction(new CallPrimitiveInstruction(primitiveIndex));
 }
 
 InstructionNode *Assembler::send(Oop selector, int argumentCount)

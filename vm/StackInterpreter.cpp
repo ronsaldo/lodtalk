@@ -41,6 +41,9 @@ public:
     virtual Oop getThisContext() override;
 
     // Returning
+    virtual int returnNil();
+    virtual int returnTrue();
+    virtual int returnFalse();
     virtual int returnTop() override;
     virtual int returnReceiver() override;
     virtual int returnSmallInteger(SmallIntegerValue value) override;
@@ -97,6 +100,10 @@ private:
 	bool hasContext;
 	bool isBlock;
 	size_t argumentCount;
+
+    // Primitive status
+    bool primitiveHasFailed;
+    int primitiveErrorCode;
 
 public:
 	StackInterpreter(VMContext *context, StackMemory *stack);
@@ -485,6 +492,12 @@ public:
         sendSelectorArgumentCount(context->getSpecialMessageSelector(SpecialMessageSelector::BasicNewSize), 1);
     }
 
+    int primitiveFailedWithCode(int errorCode)
+    {
+        primitiveHasFailed = true;
+        primitiveErrorCode = errorCode;
+        return -1;
+    }
 private:
     void sendLiteralIndexArgumentCount(size_t literalIndex, size_t argumentCount)
     {
@@ -1700,6 +1713,65 @@ private:
     {
         sendSpecialArgumentCount(SpecialMessageSelector::Y, 0);
     }
+
+    void interpretInlinePrimitive(int primitiveIndex)
+    {
+        printf("unimplemented inline primitive: %d\n", primitiveIndex);
+    }
+
+    void callPrimitiveHere(PrimitiveFunction primitive)
+    {
+        StackInterpreterProxy proxy(this);
+
+        // Reset the has failed flag.
+        primitiveHasFailed = false;
+        primitive(&proxy);
+
+        // If the primitive has failed, store the error code in the first temporary.
+        if(primitiveHasFailed)
+            setTemporary(argumentCount, Oop::encodeSmallInteger(primitiveErrorCode));
+    }
+
+    void findAndCallNamedPrimitive()
+    {
+        printf("TODO: Find the named primitive\n");
+    }
+
+    void interpretPrimitive(int primitiveIndex)
+    {
+        // Use a switch for the fast primitives.
+        switch(primitiveIndex)
+        {
+        case 256:
+            return findAndCallNamedPrimitive();
+        default:
+            // Go through the slow route.
+            break;
+        }
+
+        // Call the normal primitive
+        auto primitive = context->findPrimitive(primitiveIndex);
+        if(primitive)
+        {
+            return callPrimitiveHere(primitive);
+        }
+
+        printf("unimplemented primitive: %d\n", primitiveIndex);
+    }
+
+    // callPrimitive
+    void interpretCallPrimitive()
+    {
+        int primitiveIndex = fetchByte() | (fetchByte()<<8);
+        int inlinePrimitive = primitiveIndex & 1<<15;
+        primitiveIndex &= ~(1<<15);
+
+        fetchNextInstructionOpcode();
+        if(inlinePrimitive)
+            interpretInlinePrimitive(primitiveIndex);
+        else
+            interpretPrimitive(primitiveIndex);
+    }
 };
 
 StackInterpreter::StackInterpreter(VMContext *context, StackMemory *stack)
@@ -1784,9 +1856,21 @@ void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, size_t argum
     // Set the new pc.
     pc = 0;
 
+    // Reset the primitive has failed flag.
+    primitiveHasFailed = 0;
+
     // Call the primitive
     StackInterpreterProxy proxy(this);
     nativeMethod->primitive(&proxy);
+
+    // Check for failure of the primtiive.
+    if(primitiveHasFailed)
+    {
+        pc = 0;
+        pushOop(currentReceiver());
+        pushOop(Oop::encodeSmallInteger(primitiveErrorCode));
+        sendSpecialArgumentCount(SpecialMessageSelector::NativeMethodFailed, 1);
+    }
 }
 
 void StackInterpreter::activateBlockClosure(BlockClosure *closure)
@@ -1932,6 +2016,24 @@ Oop StackInterpreterProxy::getThisContext()
 }
 
 // Returning
+int StackInterpreterProxy::returnNil()
+{
+    interpreter->returnValue(Oop());
+    return 0;
+}
+
+int StackInterpreterProxy::returnTrue()
+{
+    interpreter->returnValue(trueOop());
+    return 0;
+}
+
+int StackInterpreterProxy::returnFalse()
+{
+    interpreter->returnValue(falseOop());
+    return 0;
+}
+
 int StackInterpreterProxy::returnTop()
 {
     interpreter->returnTop();
@@ -2002,7 +2104,7 @@ int StackInterpreterProxy::primitiveFailed()
 
 int StackInterpreterProxy::primitiveFailedWithCode(int errorCode)
 {
-    LODTALK_UNIMPLEMENTED();
+    return interpreter->primitiveFailedWithCode(errorCode);
 }
 
 // Basic new

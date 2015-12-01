@@ -161,6 +161,25 @@ unsigned int VMContext::instanceClassFactory(AbstractClassFactory *factory)
     return classIndex;
 }
 
+PrimitiveFunction VMContext::findPrimitive(int primitiveIndex)
+{
+    auto it = numberedPrimitives.find(primitiveIndex);
+    if(it != numberedPrimitives.end())
+        return it->second;
+
+    return nullptr;
+}
+
+void VMContext::registerPrimitive(int primitiveIndex, PrimitiveFunction primitive)
+{
+    numberedPrimitives[primitiveIndex] = primitive;
+}
+
+void VMContext::registerNamedPrimitive(Oop name, Oop module, PrimitiveFunction primitive)
+{
+    // TODO: Implement this
+}
+
 LODTALK_VM_EXPORT VMContext *createVMContext()
 {
     return new VMContext();

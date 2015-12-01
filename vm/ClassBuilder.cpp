@@ -102,6 +102,20 @@ ClassBuilder &ClassBuilder::addMethod(const char *name, PrimitiveFunction primit
     return *this;
 }
 
+ClassBuilder &ClassBuilder::addPrimitiveClassMethod(int primitiveNumber, const char *name, PrimitiveFunction primitive)
+{
+    addClassMethod(name, primitive);
+    context->registerPrimitive(primitiveNumber, primitive);
+    return *this;
+}
+
+ClassBuilder &ClassBuilder::addPrimitiveMethod(int primitiveNumber, const char *name, PrimitiveFunction primitive)
+{
+    addMethod(name, primitive);
+    context->registerPrimitive(primitiveNumber, primitive);
+    return *this;
+}
+
 ClassBuilder &ClassBuilder::addInstanceVariable(const char *name)
 {
     instanceVariableNames.push_back(name);

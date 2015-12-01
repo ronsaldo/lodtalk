@@ -67,3 +67,5 @@ SPECIAL_CLASS_NAME(SmalltalkImage)
 
 SPECIAL_CLASS_NAME(ExternalHandle)
 SPECIAL_CLASS_NAME(ExternalPointer)
+
+SPECIAL_CLASS_NAME(Pragma)

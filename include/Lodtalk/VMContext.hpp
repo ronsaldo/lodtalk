@@ -23,6 +23,7 @@ class SpecialRuntimeObjects;
 class AbstractClassFactory;
 class SystemDictionary;
 
+typedef int (*PrimitiveFunction) (InterpreterProxy *proxy);
 typedef std::function<void (InterpreterProxy *)> WithInterpreterBlock;
 
 /**
@@ -118,6 +119,11 @@ public:
 
     unsigned int instanceClassFactory(AbstractClassFactory *factory);
 
+    // Primitives
+    PrimitiveFunction findPrimitive(int primitiveIndex);
+    void registerPrimitive(int primitiveIndex, PrimitiveFunction primitive);
+    void registerNamedPrimitive(Oop name, Oop module, PrimitiveFunction primitive);
+
 private:
     void initialize();
     void createGlobalDictionary();
@@ -128,6 +134,7 @@ private:
     SystemDictionary *globalDictionary;
 
     std::unordered_map<AbstractClassFactory*, unsigned int> instancedClassFactories;
+    std::unordered_map<int, PrimitiveFunction> numberedPrimitives;
 };
 
 LODTALK_VM_EXPORT VMContext *createVMContext();

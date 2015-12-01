@@ -60,6 +60,8 @@ public:
     static int stSize(InterpreterProxy *interpreter);
 	static int stAt(InterpreterProxy *interpreter);
 	static int stAtPut(InterpreterProxy *interpreter);
+    static int stIdentityEqual(InterpreterProxy *interpreter);
+    static int stIdentityHash(InterpreterProxy *interpreter);
 
     static SpecialNativeClassFactory Factory;
 };
@@ -387,6 +389,21 @@ public:
     static SpecialNativeClassFactory Factory;
 
     static ExternalPointer *create(VMContext *context, void *pointer);
+};
+
+/**
+ *  Pragma
+ */
+class LODTALK_VM_EXPORT Pragma: public Object
+{
+public:
+    static SpecialNativeClassFactory Factory;
+
+    static Pragma *create(VMContext *context);
+
+    Oop method;
+    Oop keyword;
+    Oop arguments;
 };
 
 // The nil oop

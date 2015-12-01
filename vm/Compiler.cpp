@@ -436,6 +436,8 @@ public:
 	virtual Oop visitMessageSendNode(MessageSendNode *node);
 	virtual Oop visitMethodAST(MethodAST *node);
 	virtual Oop visitMethodHeader(MethodHeader *node);
+    virtual Oop visitPragmaList(PragmaList *node);
+    virtual Oop visitPragmaDefinition(PragmaDefinition *node);
 	virtual Oop visitReturnStatement(ReturnStatement *node);
 	virtual Oop visitSequenceNode(SequenceNode *node);
 	virtual Oop visitSelfReference(SelfReference *node);
@@ -545,6 +547,16 @@ Oop ASTInterpreter::visitMethodHeader(MethodHeader *node)
 	abort();
 }
 
+Oop ASTInterpreter::visitPragmaList(PragmaList *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop ASTInterpreter::visitPragmaDefinition(PragmaDefinition *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
 Oop ASTInterpreter::visitReturnStatement(ReturnStatement *node)
 {
 	assert(0 && "unimplemented");
@@ -609,6 +621,8 @@ public:
     virtual Oop visitMessageSendNode(MessageSendNode *node);
     virtual Oop visitMethodAST(MethodAST *node);
     virtual Oop visitMethodHeader(MethodHeader *node);
+    virtual Oop visitPragmaList(PragmaList *node);
+    virtual Oop visitPragmaDefinition(PragmaDefinition *node);
     virtual Oop visitReturnStatement(ReturnStatement *node);
     virtual Oop visitSequenceNode(SequenceNode *node);
     virtual Oop visitSelfReference(SelfReference *node);
@@ -785,11 +799,13 @@ Oop MethodSemanticAnalysis::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
 {
+    auto isSuperSend = node->getReceiver()->isSuperReference();
+
 	// Visit the arguments in reverse order.
 	auto &chained = node->getChainedMessages();
 
     // Only try to optimize some message when they aren't in a chain.
-    if(chained.empty())
+    if(!isSuperSend && chained.empty())
     {
         auto selector = node->getSelectorOop();
 
@@ -924,6 +940,32 @@ Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
 		pushScope(argumentScope);
 	}
 
+    // Vist the pragmas
+    auto pragmaList = node->getPragmaList();
+    if(pragmaList)
+    {
+        auto &pragmas = pragmaList->getPragmas();
+        for(auto pragma : pragmas)
+        {
+            auto &selector = pragma->getSelectorString();
+            auto &params = pragma->getParameters();
+            if(selector == "primitive:error:" || selector == "primitive:module:error:")
+            {
+                auto lastParam = params.back();
+                if(!lastParam->isLiteral())
+                    error(pragma, "expected a literal for the primitive pragma.");
+
+                auto lastParamLiteral = static_cast<LiteralNode*> (lastParam);
+                auto oop = lastParamLiteral->getValue();
+                if(classIndexOf(oop) != SCI_ByteSymbol)
+                    error(pragma, "expected a symbol or an identifier for the error code variable name.");
+
+                auto name = context->getByteSymbolData(oop);
+                printf("error code variable name: %s\n", name.c_str());
+            }
+        }
+    }
+
     // Visit the method body
 	node->getBody()->acceptVisitor(this);
 
@@ -937,6 +979,16 @@ Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
 }
 
 Oop MethodSemanticAnalysis::visitMethodHeader(MethodHeader *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitPragmaList(PragmaList *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitPragmaDefinition(PragmaDefinition *node)
 {
     LODTALK_UNIMPLEMENTED();
 }
@@ -994,7 +1046,7 @@ class MethodCompiler: public AbstractASTVisitor
 {
 public:
 	MethodCompiler(VMContext *context, Oop classBinding)
-		: context(context), selector(context), classBinding(context, classBinding), gen(context) {}
+		: context(context), selector(context), additionalMethodState(context), classBinding(context, classBinding), gen(context) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -1007,6 +1059,8 @@ public:
 	virtual Oop visitMessageSendNode(MessageSendNode *node);
 	virtual Oop visitMethodAST(MethodAST *node);
 	virtual Oop visitMethodHeader(MethodHeader *node);
+    virtual Oop visitPragmaList(PragmaList *node);
+    virtual Oop visitPragmaDefinition(PragmaDefinition *node);
 	virtual Oop visitReturnStatement(ReturnStatement *node);
 	virtual Oop visitSequenceNode(SequenceNode *node);
 	virtual Oop visitSelfReference(SelfReference *node);
@@ -1023,6 +1077,7 @@ private:
 
     VMContext *context;
 	OopRef selector;
+    Ref<AdditionalMethodState> additionalMethodState;
 	OopRef classBinding;
 	MethodAssembler::Assembler gen;
     FunctionalNode *localContext;
@@ -1422,7 +1477,7 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 	auto &chained = node->getChainedMessages();
 
     // Only try to optimize some message when they aren't in a chain.
-    if(chained.empty())
+    if(!isSuper && chained.empty())
     {
         auto selector = node->getSelectorOop();
 
@@ -1485,6 +1540,73 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	if(argumentList)
         argumentCount = argumentList->getArguments().size();
 
+    // Process the pragmas.
+    // Vist the pragmas
+    auto pragmaList = node->getPragmaList();
+    bool hasPrimitive = false;
+    size_t pragmaCount = 0;
+    if(pragmaList && !pragmaList->getPragmas().empty())
+    {
+        auto &pragmas = pragmaList->getPragmas();
+        pragmaCount = pragmas.size();
+
+        Ref<Pragma> pragmaObject(context);
+
+        additionalMethodState = AdditionalMethodState::basicNew(context, pragmaCount);
+        additionalMethodState->setSelector(selector.oop);
+
+        for(size_t i = 0; i < pragmaCount; ++i)
+        {
+            auto pragma = pragmas[i];
+            auto &selector = pragma->getSelectorString();
+            auto &params = pragma->getParameters();
+            if(selector == "primitive:" || selector == "primitive:error:")
+            {
+                // Numbered primitive.
+                hasPrimitive = true;
+
+                // Ensure the number parameter is a literal
+                auto numberParam = params[0];
+                if(!numberParam->isLiteral())
+                    continue;
+
+                // Read the number parameter.
+                auto numberParamLiteral = static_cast<LiteralNode*> (params[0]);
+                auto number = numberParamLiteral->getValue();
+                if(!number.isSmallInteger())
+                    continue;
+
+                // Call the primitive.
+                hasPrimitive = true;
+                gen.callPrimitive(number.decodeSmallInteger());
+            }
+            else if(selector == "primitive:module:" || selector == "primitive:module:error:")
+            {
+                // Named primitive.
+                hasPrimitive = true;
+                gen.callPrimitive(256);
+            }
+
+            // Create the pragma.
+            pragmaObject = Pragma::create(context);
+            pragmaObject->arguments = Oop::fromPointer(Array::basicNativeNew(context, params.size()));
+            pragmaObject->keyword = context->makeByteSymbol(pragma->getSelectorString());
+            additionalMethodState->getIndexableElements()[i] = pragmaObject.getOop();
+
+            // Set the arguments.
+            auto argumentsData = reinterpret_cast<Oop*> (pragmaObject->arguments.getFirstFieldPointer());
+            for(size_t j = 0; j < params.size(); ++j)
+            {
+                auto paramNode = params[j];
+                if(!paramNode->isLiteral())
+                    error(paramNode, "Expected a literal for the pragma parameters.");
+
+                auto paramLiteralNode = static_cast<LiteralNode*> (paramNode);
+                argumentsData[j] = paramLiteralNode->getValue();
+            }
+        }
+    }
+
     // Count the captured variables.
     auto &blockLocals = node->getLocalVariables();
     size_t capturedCount = 0;
@@ -1546,15 +1668,42 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	if(!gen.isLastReturn())
 		gen.returnReceiver();
 
-	// Set the method selector
-	gen.addLiteralAlways(selector);
+	// Set the method selector/additonal method state.
+    if(!additionalMethodState.isNil())
+        gen.addLiteralAlways(additionalMethodState.getOop());
+    else
+        gen.addLiteralAlways(selector);
 
 	// Set the class binding.
 	gen.addLiteralAlways(classBinding);
-	return Oop::fromPointer(gen.generate(temporalCount, argumentCount));
+	Oop result = Oop::fromPointer(gen.generate(temporalCount, argumentCount, hasPrimitive));
+
+    // Set some back pointers.
+    if(!additionalMethodState.isNil())
+    {
+        additionalMethodState->setMethod(result);
+        auto pragmas = additionalMethodState->getIndexableElements();
+        for(size_t i = 0; i < pragmaCount; ++i)
+        {
+            auto pragma = reinterpret_cast<Pragma*> (pragmas[i].pointer);
+            pragma->method = result;
+        }
+    }
+
+    return result;
 }
 
 Oop MethodCompiler::visitMethodHeader(MethodHeader *node)
+{
+	LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodCompiler::visitPragmaList(PragmaList *node)
+{
+	LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodCompiler::visitPragmaDefinition(PragmaDefinition *node)
 {
 	LODTALK_UNIMPLEMENTED();
 }
@@ -1701,7 +1850,7 @@ int ScriptContext::stExecuteFileNamed(InterpreterProxy *interpreter)
 		basePathString = context->getByteStringData(self->basePath);
 	std::string fileNameString = context->getByteStringData(fileNameOop);
 	std::string fullFileName = joinPath(basePathString, fileNameString);
-    
+
     interpreter->pushOop(Oop());
 	auto res = executeScriptFromFileNamed(interpreter, fullFileName);
     if(res != 0)

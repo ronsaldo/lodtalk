@@ -19,6 +19,11 @@ bool Node::isIdentifierExpression() const
 	return false;
 }
 
+bool Node::isLiteral() const
+{
+    return false;
+}
+
 bool Node::isReturnStatement() const
 {
 	return false;
@@ -92,6 +97,11 @@ LiteralNode::~LiteralNode()
 Oop LiteralNode::acceptVisitor(ASTVisitor *visitor)
 {
 	return visitor->visitLiteralNode(this);
+}
+
+bool LiteralNode::isLiteral() const
+{
+    return true;
 }
 
 Oop LiteralNode::getValue() const
@@ -485,6 +495,11 @@ MethodHeader *MethodAST::getHeader() const
 	return header;
 }
 
+PragmaList *MethodAST::getPragmaList() const
+{
+    return pragmaList;
+}
+
 SequenceNode *MethodAST::getBody() const
 {
 	return body;
@@ -514,6 +529,11 @@ PragmaList::~PragmaList()
         delete pragma;
 }
 
+Oop PragmaList::acceptVisitor(ASTVisitor *visitor)
+{
+    return visitor->visitPragmaList(this);
+}
+
 const PragmaList::Pragmas &PragmaList::getPragmas() const
 {
     return pragmas;
@@ -534,6 +554,11 @@ PragmaDefinition::~PragmaDefinition()
 {
     for(auto param : parameters)
         delete param;
+}
+
+Oop PragmaDefinition::acceptVisitor(ASTVisitor *visitor)
+{
+    return visitor->visitPragmaDefinition(this);
 }
 
 void PragmaDefinition::appendParameter(const std::string &keyword, Node *node)

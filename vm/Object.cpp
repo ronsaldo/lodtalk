@@ -33,18 +33,10 @@ int Object::stSize(InterpreterProxy *interpreter)
 
     auto self = interpreter->getReceiver();
 	if(!self.isPointer())
-	{
-		if(self.isSmallInteger())
-			nativeError("instances of Smallinteger are not indexable.");
-		if(self.isCharacter())
-			nativeError("instances of Character are not indexable.");
-		if(self.isSmallFloat())
-			nativeError("instances of Smallfloat are not indexable.");
-		nativeError("not indexable instance.");
-	}
+        return interpreter->primitiveFailed();
 
 	if(!self.isIndexable())
-		nativeError("not indexable instance.");
+		return interpreter->primitiveFailed();
 
 	return interpreter->returnSmallInteger(self.getNumberOfElements());
 }
@@ -64,7 +56,7 @@ int Object::stAt(InterpreterProxy *interpreter)
     auto size = interpreter->popOop().decodeSmallInteger();
 	auto index = indexOop.decodeSmallInteger() - 1;
 	if(index > size || index < 0)
-		nativeError("index out of bounds.");
+		return interpreter->primitiveFailed();
 
     // Get the element.
     auto context = interpreter->getContext();
@@ -105,8 +97,7 @@ int Object::stAt(InterpreterProxy *interpreter)
     }
 
     // Should not reach here.
-	nativeError("unimplemented");
-	abort();
+    return interpreter->primitiveFailed();
 }
 
 
@@ -126,7 +117,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
 	auto size = interpreter->popOop().decodeSmallInteger();
 	auto index = indexOop.decodeSmallInteger() - 1;
 	if(index > size || index < 0)
-		nativeError("index out of bounds.");
+		return interpreter->primitiveFailed();
 
     // Set the element.
     auto context = interpreter->getContext();
@@ -141,7 +132,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
     {
         auto data = reinterpret_cast<uint8_t*> (firstIndexableField);
         if(!value.isSmallInteger())
-            nativeError("expected a small integer.");
+            return interpreter->primitiveFailed();
 
         data[index] = (uint8_t)value.decodeSmallInteger();
     }
@@ -149,7 +140,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
     {
         auto data = reinterpret_cast<uint16_t*> (firstIndexableField);
         if(!value.isSmallInteger())
-            nativeError("expected a small integer.");
+            return interpreter->primitiveFailed();
 
         data[index] = (uint16_t)value.decodeSmallInteger();
     }
@@ -158,7 +149,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
 #ifdef OBJECT_MODEL_SPUR_64
         auto data = reinterpret_cast<uint32_t*> (firstIndexableField);
         if(!value.isSmallInteger())
-            nativeError("expected a small integer.");
+            return interpreter->primitiveFailed();
 
         data[index] = (uint32_t)value.decodeSmallInteger();
 #else
@@ -178,13 +169,36 @@ int Object::stAtPut(InterpreterProxy *interpreter)
     return interpreter->returnReceiver();
 }
 
+int Object::stIdentityEqual(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto self = interpreter->getReceiver();
+    auto test = interpreter->getTemporary(0);
+    if(self == test)
+        return interpreter->returnTrue();
+    else
+        return interpreter->returnFalse();
+}
+
+int Object::stIdentityHash(InterpreterProxy *interpreter)
+{
+    auto receiver = interpreter->getReceiver();
+    return interpreter->returnSmallInteger(identityHashOf(receiver));
+}
+
 // Object
 SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
     builder
-        .addMethod("class", Object::stClass)
-        .addMethod("size", Object::stSize)
-        .addMethod("at:", Object::stAt)
-        .addMethod("at:put:", Object::stAtPut);
+        .addPrimitiveMethod(60, "at:", Object::stAt)
+        .addPrimitiveMethod(61, "at:put:", Object::stAtPut)
+        .addPrimitiveMethod(62, "size", Object::stSize)
+        .addPrimitiveMethod(75, "identityHash", Object::stIdentityHash)
+        .addPrimitiveMethod(110, "==", Object::stIdentityEqual)
+        .addPrimitiveMethod(111, "class", Object::stClass)
+
+        .addMethod("hash", Object::stIdentityHash);
 });
 
 // Undefined object
@@ -281,8 +295,8 @@ SpecialNativeClassFactory Behavior::Factory("Behavior", SCI_Behavior, &Object::F
         .addInstanceVariables("superclass", "methodDict", "format", "fixedVariableCount", "layout");
 
     builder
-        .addMethod("basicNew", Behavior::stBasicNew)
-        .addMethod("basicNew:", Behavior::stBasicNewSize)
+        .addPrimitiveMethod(70, "basicNew", Behavior::stBasicNew)
+        .addPrimitiveMethod(71, "basicNew:", Behavior::stBasicNewSize)
         .addMethod("registerInClassTable", Behavior::stRegisterInClassTable);
 });
 
@@ -494,6 +508,17 @@ ExternalPointer *ExternalPointer::create(VMContext *context, void *pointer)
 SpecialNativeClassFactory ExternalPointer::Factory("ExternalPointer", SCI_ExternalPointer, &ExternalHandle::Factory, [](ClassBuilder &builder) {
     builder
         .variableBits8();
+});
+
+// Pragma
+Pragma *Pragma::create(VMContext *context)
+{
+    return reinterpret_cast<Pragma *> (context->newObject(3, 0, OF_FIXED_SIZE, SCI_Pragma));
+}
+
+SpecialNativeClassFactory Pragma::Factory("Pragma", SCI_Pragma, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .addInstanceVariables("method", "keyword", "arguments");
 });
 
 } // End of namespace Lodtalk

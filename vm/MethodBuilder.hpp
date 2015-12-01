@@ -123,7 +123,7 @@ public:
     InstructionNode *getLastInstruction();
 	bool isLastReturn();
 
-	CompiledMethod *generate(size_t temporalCount, size_t argumentCount, size_t extraSize = 0);
+	CompiledMethod *generate(size_t temporalCount, size_t argumentCount, bool hasPrimitive, size_t extraSize = 0);
 
 public:
 	InstructionNode *returnReceiver();
@@ -166,6 +166,8 @@ public:
 	InstructionNode *pushFalse();
 	InstructionNode *pushOne();
 	InstructionNode *pushZero();
+
+    InstructionNode *callPrimitive(int primitiveIndex);
 
     InstructionNode *sendValue();
     InstructionNode *sendValueWithArg();
