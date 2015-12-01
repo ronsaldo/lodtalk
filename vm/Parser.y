@@ -54,6 +54,8 @@ inline std::string readStringValue(char* stringValue)
     Lodtalk::AST::LocalDeclarations *localDeclarations;
     Lodtalk::AST::ArgumentList *argumentList;
     Lodtalk::AST::MethodHeader *methodHeader;
+    Lodtalk::AST::PragmaList *pragmaList;
+    Lodtalk::AST::PragmaDefinition *pragmaDefinition;
 }
 
 %token LBRACKET RBRACKET
@@ -65,6 +67,7 @@ inline std::string readStringValue(char* stringValue)
 %token RETURN
 %token ASSIGNMENT
 %token VERTICAL_BAR
+%token LT GT
 
 %token KNIL KTRUE KFALSE
 %token KSELF KSUPER KTHIS_CONTEXT
@@ -85,7 +88,7 @@ inline std::string readStringValue(char* stringValue)
 
 %type<node> statement expression operand literal top assignment referenceExpression
 %type<node> unaryMessage binaryMessage returnStatement block specialIdentifiers
-%type<node> method methodPragmas
+%type<node> method
 %type<messageSendNode> messageChainElement messageChain
 %type<sequenceNode> statementList statementListNonEmpty blockContent
 
@@ -96,6 +99,10 @@ inline std::string readStringValue(char* stringValue)
 
 %type<node> sourceFileStatement
 %type<sequenceNode> sourceFile sourceFileStatementList
+
+%type<pragmaList> methodPragmas
+%type<pragmaDefinition> methodPragma keywordPragmaContent
+%type<node> pragmaLiteral
 
 %%
 
@@ -124,7 +131,7 @@ method: methodHeader methodPragmas blockContent { $$ = new MethodAST(extraData->
       ;
 
 methodHeader: IDENTIFIER                    { $$ = new MethodHeader(readStringValue($1)); }
-            | binarySelector IDENTIFIER    { $$ = new MethodHeader(readStringValue($1), new ArgumentList(new Argument(readStringValue($2)))); }
+            | binarySelector IDENTIFIER     { $$ = new MethodHeader(readStringValue($1), new ArgumentList(new Argument(readStringValue($2)))); }
             | keywordMethodHeader           { $$ = $1; }
             ;
 
@@ -135,7 +142,20 @@ keywordMethodHeader: MESSAGE_KEYWORD IDENTIFIER                         { $$ = n
                    }
                    ;
 
-methodPragmas: { $$ = nullptr; }
+methodPragmas: { $$ = new PragmaList(); }
+             | methodPragmas methodPragma { $$ = $1; $$->addPragma($2); }
+             ;
+
+methodPragma: LT IDENTIFIER GT              { $$ = new PragmaDefinition(extraData->context, readStringValue($2)); }
+            | LT keywordPragmaContent GT    { $$ = $2; }
+            ;
+
+keywordPragmaContent: MESSAGE_KEYWORD pragmaLiteral                 { $$ = new PragmaDefinition(extraData->context); $$->appendParameter(readStringValue($1), $2); }
+            | keywordPragmaContent MESSAGE_KEYWORD pragmaLiteral { $$ = $1; $$->appendParameter(readStringValue($2), $3); }
+            ;
+
+pragmaLiteral: literal  { $$ = $1; }
+             | IDENTIFIER { $$ = new LiteralNode(ByteSymbol::fromNative(extraData->context, readStringValue($1))); }
              ;
 
 block: LBRACKET blockArguments blockContent RBRACKET  { $$ = new BlockExpression($2, $3); }
@@ -253,6 +273,8 @@ literal: INTEGER    { $$ = new LiteralNode(extraData->context->signedInt64Object
 
 binarySelector: BINARY_SELECTOR { $$ = $1; }
               | VERTICAL_BAR    { $$ = strdup("|"); }
+              | LT              { $$ = strdup("<"); }
+              | GT              { $$ = strdup(">"); }
               ;
 
 %%

@@ -12,6 +12,48 @@ namespace Lodtalk
 class NativeMethodWrapper;
 
 /**
+ * Additional method state.
+ */
+class AdditionalMethodState: public Object
+{
+public:
+    static SpecialNativeClassFactory Factory;
+
+    static AdditionalMethodState *basicNew(VMContext *context, size_t size);
+
+    Oop getMethod()
+    {
+        return getElements()[0];
+    }
+
+    Oop getSelector()
+    {
+        return getElements()[1];
+    }
+
+    void setMethod(const Oop &method)
+    {
+        getElements()[0] = method;
+    }
+
+    void setSelector(const Oop &selector)
+    {
+        getElements()[1] = selector;
+    }
+
+    Oop *getIndexableElements()
+    {
+        return getElements() + 2;
+    }
+
+private:
+    Oop *getElements()
+    {
+        return reinterpret_cast<Oop*> (getFirstFieldPointer());
+    }
+};
+
+/**
  * Compiled method
  */
 class CompiledMethod: public ByteArray
@@ -70,7 +112,12 @@ public:
 	{
 		auto selectorIndex = getLiteralCount() - 2;
 		auto selectorOop = getFirstLiteralPointer()[selectorIndex];
-		// TODO: support method properties
+        if(selectorOop.header->classIndex == SCI_AdditionalMethodState)
+        {
+            auto methodState = reinterpret_cast<AdditionalMethodState*> (selectorOop.pointer);
+            selectorOop = methodState->getSelector();
+        }
+
 		return selectorOop;
 	}
 

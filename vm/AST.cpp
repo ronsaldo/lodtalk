@@ -463,14 +463,15 @@ void MethodHeader::appendSelectorAndArgument(const std::string &selectorExtra, A
 }
 
 // Method AST
-MethodAST::MethodAST(VMContext *context, MethodHeader *header, Node *pragmas, SequenceNode *body)
-	: context(context), header(header), body(body), astHandle(context)
+MethodAST::MethodAST(VMContext *context, MethodHeader *header, PragmaList *pragmaList, SequenceNode *body)
+	: context(context), header(header), pragmaList(pragmaList), body(body), astHandle(context)
 {
 }
 
 MethodAST::~MethodAST()
 {
 	delete header;
+    delete pragmaList;
 	delete body;
 }
 
@@ -500,6 +501,55 @@ const Ref<MethodASTHandle> &MethodAST::getHandle()
 		astHandle.reset(MethodASTHandle::basicNativeNew(context, this));
 
 	return astHandle;
+}
+
+// Pragma list
+PragmaList::PragmaList()
+{
+}
+
+PragmaList::~PragmaList()
+{
+    for(auto pragma : pragmas)
+        delete pragma;
+}
+
+const PragmaList::Pragmas &PragmaList::getPragmas() const
+{
+    return pragmas;
+}
+
+void PragmaList::addPragma(PragmaDefinition *pragmaDefinition)
+{
+    pragmas.push_back(pragmaDefinition);
+}
+
+// Pragma definition
+PragmaDefinition::PragmaDefinition(VMContext *context, const std::string &selector)
+    : context(context), selector(selector)
+{
+}
+
+PragmaDefinition::~PragmaDefinition()
+{
+    for(auto param : parameters)
+        delete param;
+}
+
+void PragmaDefinition::appendParameter(const std::string &keyword, Node *node)
+{
+    selector += keyword;
+    parameters.push_back(node);
+}
+
+const PragmaDefinition::Parameters &PragmaDefinition::getParameters() const
+{
+    return parameters;
+}
+
+const std::string &PragmaDefinition::getSelectorString()
+{
+    return selector;
 }
 
 // Self reference

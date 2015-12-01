@@ -39,7 +39,7 @@ inline int my_fileno(FILE *f)
 #define isatty my_isatty
 #define fileno my_fileno
 
-#endif 
+#endif
 
 #include <string.h>
 #include <stdlib.h>
@@ -92,6 +92,9 @@ yylloc->first_column = yyextra->columnCount; yylloc->last_column = int(yyextra->
 \:=                             { return ASSIGNMENT; }
 
 \|                              { return VERTICAL_BAR; }
+
+\<                              { return LT; }
+\>                              { return GT; }
 
 nil                             { return KNIL; }
 true                            { return KTRUE; }

@@ -7,6 +7,19 @@
 namespace Lodtalk
 {
 
+// AdditionalMethodState
+AdditionalMethodState *AdditionalMethodState::basicNew(VMContext *context, size_t size)
+{
+    return reinterpret_cast<AdditionalMethodState*> (context->newObject(2, size, OF_VARIABLE_SIZE_IVARS, SCI_AdditionalMethodState));
+}
+
+SpecialNativeClassFactory AdditionalMethodState::Factory("AdditionalMethodState", SCI_AdditionalMethodState, &Object::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableSizeWithInstanceVariables()
+        .addInstanceVariables("selector", "method");
+
+});
+
 // CompiledMethod
 CompiledMethod *CompiledMethod::newMethodWithHeader(VMContext *context, size_t numberOfBytes, CompiledMethodHeader header)
 {

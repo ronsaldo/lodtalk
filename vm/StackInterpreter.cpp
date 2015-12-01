@@ -102,9 +102,6 @@ public:
 	StackInterpreter(VMContext *context, StackMemory *stack);
 	~StackInterpreter();
 
-	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
-    Oop interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments);
-
 	void interpret();
 
 public:
@@ -1712,48 +1709,6 @@ StackInterpreter::StackInterpreter(VMContext *context, StackMemory *stack)
 
 StackInterpreter::~StackInterpreter()
 {
-}
-
-Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, int argumentCount, Oop *arguments)
-{
-	// Check the argument count
-	if(argumentCount != (int)newMethod->getArgumentCount())
-		nativeError("invalid suplied argument count.");
-
-	// Push the receiver and the arguments
-	pushOop(receiver);
-	for(int i = 0; i < argumentCount; ++i)
-		pushOop(arguments[i]);
-
-	// Make the method frame.
-	pushUInt(0); // Return instruction PC.
-	activateMethodFrame(newMethod);
-
-	interpret();
-
-	auto returnValue = popOop();
-	return returnValue;
-}
-
-Oop StackInterpreter::interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments)
-{
-	// Check the argument count
-	if(argumentCount != (int)closure->getArgumentCount())
-		nativeError("invalid suplied argument count.");
-
-	// Push the closure and the arguments
-	pushOop(Oop::fromPointer(closure));
-	for(int i = 0; i < argumentCount; ++i)
-		pushOop(arguments[i]);
-
-	// Make the closure frame.
-	pushUInt(0); // Return instruction PC.
-	activateBlockClosure(closure);
-
-	interpret();
-
-	auto returnValue = popOop();
-	return returnValue;
 }
 
 void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)

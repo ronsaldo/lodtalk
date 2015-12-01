@@ -35,6 +35,8 @@ class SelfReference;
 class SequenceNode;
 class SuperReference;
 class ThisContextReference;
+class PragmaList;
+class PragmaDefinition;
 
 /**
  * AST visitor
@@ -369,12 +371,13 @@ class MethodAST: public FunctionalNode
 {
 public:
 
-	MethodAST(VMContext *context, MethodHeader *header, Node *pragmas, SequenceNode *body);
+	MethodAST(VMContext *context, MethodHeader *header, PragmaList *pragmaList, SequenceNode *body);
 	~MethodAST();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
 
 	MethodHeader *getHeader() const;
+    PragmaList *getPragmaList() const;
 	SequenceNode *getBody() const;
 
     virtual ArgumentList *getArgumentList() const;
@@ -384,8 +387,49 @@ public:
 private:
     VMContext *context;
 	MethodHeader *header;
+    PragmaList *pragmaList;
 	SequenceNode *body;
 	Ref<MethodASTHandle> astHandle;
+};
+
+/**
+ * Pragma list
+ */
+class PragmaList
+{
+public:
+    typedef std::vector<PragmaDefinition*> Pragmas;
+
+    PragmaList();
+    ~PragmaList();
+
+    const Pragmas &getPragmas() const;
+    void addPragma(PragmaDefinition *pragmaDefinition);
+
+private:
+    Pragmas pragmas;
+};
+
+/**
+ * Pragma definition.
+ */
+class PragmaDefinition
+{
+public:
+    typedef std::vector<Node*> Parameters;
+
+    PragmaDefinition(VMContext *context, const std::string &selector = std::string());
+    ~PragmaDefinition();
+
+    void appendParameter(const std::string &keyword, Node *node);
+
+    const Parameters &getParameters() const;
+    const std::string &getSelectorString();
+
+private:
+    VMContext *context;
+    std::string selector;
+    Parameters parameters;
 };
 
 /**

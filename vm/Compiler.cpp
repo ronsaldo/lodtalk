@@ -1701,6 +1701,7 @@ int ScriptContext::stExecuteFileNamed(InterpreterProxy *interpreter)
 		basePathString = context->getByteStringData(self->basePath);
 	std::string fileNameString = context->getByteStringData(fileNameOop);
 	std::string fullFileName = joinPath(basePathString, fileNameString);
+    
     interpreter->pushOop(Oop());
 	auto res = executeScriptFromFileNamed(interpreter, fullFileName);
     if(res != 0)

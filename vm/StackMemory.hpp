@@ -65,6 +65,11 @@ public:
 		return *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::PrevFramePointerOffset);
 	}
 
+    inline uint8_t *getReturnPointer()
+	{
+		return *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::ReturnInstructionPointerOffset);
+	}
+
 	inline CompiledMethod *getMethod()
 	{
 		return *reinterpret_cast<CompiledMethod**> (framePointer + InterpreterStackFrame::MethodOffset);
@@ -188,6 +193,7 @@ public:
     }
 
 	void setStorage(uint8_t *storage, size_t storageSize);
+    void createTerminalStackFrame();
 
 public:
 	inline size_t getStackSize() const

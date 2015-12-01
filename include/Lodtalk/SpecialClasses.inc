@@ -49,6 +49,7 @@ SPECIAL_CLASS_NAME(Dictionary)
 SPECIAL_CLASS_NAME(IdentityDictionary)
 SPECIAL_CLASS_NAME(SystemDictionary)
 
+SPECIAL_CLASS_NAME(AdditionalMethodState)
 SPECIAL_CLASS_NAME(CompiledMethod)
 SPECIAL_CLASS_NAME(NativeMethod)
 SPECIAL_CLASS_NAME(InstructionStream)

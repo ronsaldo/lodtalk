@@ -69,6 +69,30 @@ void StackMemory::setStorage(uint8_t *storage, size_t storageSize)
 	stackFrame = StackFrame(nullptr, stackPageHighest);
 }
 
+void StackMemory::createTerminalStackFrame()
+{
+    // Null return pc
+    pushPointer(0);
+
+    // Null previous stack frame.
+    pushPointer(0);
+
+    // Set the stack frame pointer.
+    setFramePointer(getStackPointer());
+
+    // Push the nil method object.
+    pushOop(Oop());
+
+    // Encode frame metadata
+    pushUInt(encodeFrameMetaData(false, false, 0));
+
+    // Push the nil this context.
+    pushOop(Oop());
+
+    // Push the nil receiver oop.
+    pushOop(Oop());
+}
+
 // Interface for accessing the stack memory for the current native thread.
 static thread_local StackMemory *currentStackMemory = nullptr;
 
@@ -104,6 +128,7 @@ void withStackMemory(VMContext *context, const StackMemoryEntry &entryPoint)
 
 	currentStackMemory = new StackMemory(context);
 	currentStackMemory->setStorage(reinterpret_cast<uint8_t*> (alloca(StackMemoryPageSize)), StackMemoryPageSize);
+    currentStackMemory->createTerminalStackFrame();
     context->getMemoryManager()->getStackMemories()->registerMemory(currentStackMemory);
 	return entryPoint(currentStackMemory);
 }
