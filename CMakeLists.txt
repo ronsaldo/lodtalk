@@ -39,6 +39,10 @@ include(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 include(${CMAKE_ROOT}/Modules/CheckLibraryExists.cmake)
 
 # Find flex and bison
+if(WIN32)
+	list(APPEND CMAKE_PROGRAM_PATH "${CMAKE_SOURCE_DIR}/thirdparty/win_flex_bison")
+endif()
+
 find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
