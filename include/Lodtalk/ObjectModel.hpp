@@ -428,6 +428,16 @@ public:
 	#endif
 	}
 
+    inline bool isFloat() const
+    {
+        return isSmallFloat() || (isPointer() && header->classIndex == SCI_Float);
+    }
+
+    inline bool isFloatOrInt() const
+    {
+        return isSmallInteger() || isFloat();
+    }
+
 	inline bool isPointer() const
 	{
 		return (uintValue & ObjectTag::PointerMask) == ObjectTag::Pointer;
@@ -481,6 +491,22 @@ public:
     inline double decodeSmallFloat() const
     {
         LODTALK_UNIMPLEMENTED();
+    }
+
+    inline double decodeFloat() const
+    {
+        assert(isFloat());
+        if (isSmallFloat())
+            return decodeSmallFloat();
+        return reinterpret_cast<double*> (&header[1])[0];
+    }
+
+    inline double decodeFloatOrInt() const
+    {
+        assert(isFloatOrInt());
+        if (isSmallInteger())
+            return (double)decodeSmallInteger();
+        return decodeFloat();
     }
 
     static inline Oop encodeSmallFloat(double value)
@@ -587,7 +613,7 @@ public:
 	union
 	{
 		uint8_t *pointer;
-		ObjectHeader *header;
+        ObjectHeader *header;
 		uintptr_t uintValue;
 		intptr_t intValue;
 	};

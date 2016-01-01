@@ -12,6 +12,7 @@ set(LodtalkVM_HEADERS
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Definitions.h"
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Exception.hpp"
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/InterpreterProxy.hpp"
+  "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Math.hpp"
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/Object.hpp"
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/ObjectModel.hpp"
   "${LODTALK_VM_INCLUDE_DIR}/Lodtalk/SpecialClasses.inc"

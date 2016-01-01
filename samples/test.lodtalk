@@ -118,7 +118,9 @@ main
     self dumpFunction: #loop.
     self loop.
 
-    self printLine: self printClosureMaker value "outerContext closureOrNil name"
+    self printLine: self printClosureMaker value "outerContext closureOrNil name".
+
+    self halt.
 ].
 
 

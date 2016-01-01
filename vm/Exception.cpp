@@ -13,7 +13,7 @@ void nativeErrorFormat(const char *format, ...)
     vsnprintf(buffer, 1024, format, args);
 	va_end(args);
 
-	nativeError(format);
+	nativeError(buffer);
 }
 
 } // End of namespace Lodtalk

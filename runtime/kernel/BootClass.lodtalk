@@ -29,6 +29,7 @@ initWithSuperclass: theSuperclass format: theFormat name: myGivenName instanceVa
 
     "Increase the fixed variable count"
     fixedVariableCount := fixedVariableCount + instanceVariables size.
+    fixedVariableCount := 0.
     fixedVariableCount == 0 ifTrue: [
         format == "OF_FIXED_SIZE" 1 ifTrue: [ format := "OF_EMPTY" 0].
         format == "OF_VARIABLE_SIZE_IVARS" 3 ifTrue: [ format := "OF_VARIABLE_SIZE_NO_IVARS" 2].

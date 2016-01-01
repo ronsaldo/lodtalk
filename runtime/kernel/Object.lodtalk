@@ -1,72 +1,19 @@
-"Object methods"
+"Error messages in Object"
 self class: Object.
-
-self category: 'accessing'.
 self method [
-at: index
-	<primitive: 60>
-    self error: 'basicAt: failed'.
+error: aStringMessage
+    Error signal: aStringMessage
 ].
 
 self method [
-at: index put: anObject
-	<primitive: 61>
-    self error: 'basicAt:put: failed'.
+halt
+    Halt now
 ].
 
 self method [
-size
-	<primitive: 62>
-    self error: 'basicSize failed'.
-].
-
-self method [
-basicAt: index
-	<primitive: 60>
-    self error: 'basicAt: failed'.
-].
-
-self method [
-basicAt: index put: anObject
-	<primitive: 61>
-    self error: 'basicAt:put: failed'.
-].
-
-self method [
-basicSize
-	<primitive: 62>
-    self error: 'basicSize failed'.
-].
-
-self method [
-name
-    ^ self printString
-].
-
-self method [
-yourself
-    ^ self
-].
-
-self category: 'evaluating'.
-self method [
-value
-    ^ self
-].
-
-self method [
-valueWithArguments
-    ^ self
-].
-
-self category: 'converting'.
-self method [
-asString
-    ^ self printString
-].
-
-self category: 'printing'.
-self method [
-printString
-    ^ self class name
+doesNotUnderstand: aMessage
+    OSIO printString: '
+doesNotUnderstand called
+'
+    Halt now
 ].

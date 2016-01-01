@@ -1578,7 +1578,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 
                 // Call the primitive.
                 hasPrimitive = true;
-                gen.callPrimitive(number.decodeSmallInteger());
+                gen.callPrimitive((int)number.decodeSmallInteger());
             }
             else if(selector == "primitive:module:" || selector == "primitive:module:error:")
             {

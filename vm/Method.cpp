@@ -153,10 +153,15 @@ SpecialNativeClassFactory BlockClosure::Factory("BlockClosure", SCI_BlockClosure
         .addInstanceVariables("outerContext", "startpc", "numArgs");
 });
 
-// MessageSend
-SpecialNativeClassFactory MessageSend::Factory("MessageSend", SCI_MessageSend, &Object::Factory, [](ClassBuilder &builder) {
+// Message
+Message *Message::create(VMContext *context)
+{
+    return reinterpret_cast<Message*> (context->newObject(MessageVariableCount, 0, OF_FIXED_SIZE, SCI_Message));
+}
+
+SpecialNativeClassFactory Message::Factory("Message", SCI_Message, &Object::Factory, [](ClassBuilder &builder) {
     builder
-        .addInstanceVariables("receiver", "selector", "arguments");
+        .addInstanceVariables("selector", "args", "lookupClass");
 });
 
 } // End of namespace Lodtalk

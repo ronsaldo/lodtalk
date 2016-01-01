@@ -224,6 +224,8 @@ class LODTALK_VM_EXPORT Number: public Magnitude
 {
 public:
     static SpecialNativeClassFactory Factory;
+
+    static int stMakePoint(InterpreterProxy *interpreter);
 };
 
 /**
@@ -233,6 +235,7 @@ class LODTALK_VM_EXPORT Integer: public Number
 {
 public:
     static SpecialNativeClassFactory Factory;
+
 };
 
 /**
@@ -244,6 +247,27 @@ public:
     static SpecialNativeClassFactory Factory;
 
     static int stPrintString(InterpreterProxy *interpreter);
+
+    static int stAdd(InterpreterProxy *interpreter);
+    static int stSub(InterpreterProxy *interpreter);
+    static int stLess(InterpreterProxy *interpreter);
+    static int stGreater(InterpreterProxy *interpreter);
+    static int stLessEqual(InterpreterProxy *interpreter);
+    static int stGreaterEqual(InterpreterProxy *interpreter);
+    static int stEqual(InterpreterProxy *interpreter);
+    static int stNotEqual(InterpreterProxy *interpreter);
+    static int stMul(InterpreterProxy *interpreter);
+    static int stDiv(InterpreterProxy *interpreter);
+    static int stMod(InterpreterProxy *interpreter);
+    static int stIntegerDivide(InterpreterProxy *interpreter);
+    static int stQuotient(InterpreterProxy *interpreter);
+    static int stBitAnd(InterpreterProxy *interpreter);
+    static int stBitOr(InterpreterProxy *interpreter);
+    static int stBitXor(InterpreterProxy *interpreter);
+    static int stBitShift(InterpreterProxy *interpreter);
+
+    static int stAsFloat(InterpreterProxy *interpreter);
+    
 };
 
 /**
@@ -253,6 +277,22 @@ class LODTALK_VM_EXPORT Float: public Number
 {
 public:
     static SpecialNativeClassFactory Factory;
+
+    static int stAdd(InterpreterProxy *interpreter);
+    static int stSub(InterpreterProxy *interpreter);
+    static int stLess(InterpreterProxy *interpreter);
+    static int stGreater(InterpreterProxy *interpreter);
+    static int stLessEqual(InterpreterProxy *interpreter);
+    static int stGreaterEqual(InterpreterProxy *interpreter);
+    static int stEqual(InterpreterProxy *interpreter);
+    static int stNotEqual(InterpreterProxy *interpreter);
+    static int stMul(InterpreterProxy *interpreter);
+    static int stDiv(InterpreterProxy *interpreter);
+    static int stTruncated(InterpreterProxy *interpreter);
+    static int stFractionPart(InterpreterProxy *interpreter);
+    static int stExponent(InterpreterProxy *interpreter);
+    static int stTimesTwoPower(InterpreterProxy *interpreter);
+
 };
 
 /**

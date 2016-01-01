@@ -17,6 +17,7 @@ public:
     // Stack manipulation
 	virtual void pushOop(Oop oop) = 0;
     virtual void pushSmallInteger(SmallIntegerValue value) = 0;
+    virtual void pushFloat(double value) = 0;
 
 	virtual Oop &stackOopAt(size_t index) = 0;
 	virtual Oop &stackTop() = 0;
@@ -38,7 +39,10 @@ public:
     virtual int returnFalse() = 0;
     virtual int returnTop() = 0;
     virtual int returnReceiver() = 0;
+    virtual int returnBoolean(bool value) = 0;
+    virtual int returnFloat(double value) = 0;
     virtual int returnSmallInteger(SmallIntegerValue value) = 0;
+    virtual int returnInteger(SmallIntegerValue value) = 0;
     virtual int returnOop(Oop value) = 0;
     virtual int returnExternalHandle(void *handle) = 0;
     virtual int returnExternalPointer(void *pointer) = 0;

@@ -1,9 +1,10 @@
 #include <string.h>
-#include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Object.hpp"
+#include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Collections.hpp"
 #include "Lodtalk/InterpreterProxy.hpp"
 #include "Lodtalk/Exception.hpp"
+#include "Lodtalk/Math.hpp"
 #include "Method.hpp"
 
 namespace Lodtalk
@@ -191,13 +192,16 @@ int Object::stIdentityHash(InterpreterProxy *interpreter)
 // Object
 SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
     builder
-        .addPrimitiveMethod(60, "at:", Object::stAt)
-        .addPrimitiveMethod(61, "at:put:", Object::stAtPut)
-        .addPrimitiveMethod(62, "size", Object::stSize)
+        .addPrimitiveMethod(60, "basicAt:", Object::stAt)
+        .addPrimitiveMethod(61, "basicAt:put:", Object::stAtPut)
+        .addPrimitiveMethod(62, "basicSize", Object::stSize)
         .addPrimitiveMethod(75, "identityHash", Object::stIdentityHash)
         .addPrimitiveMethod(110, "==", Object::stIdentityEqual)
         .addPrimitiveMethod(111, "class", Object::stClass)
 
+        .addMethod("at:", Object::stAt)
+        .addMethod("at:put:", Object::stAtPut)
+        .addMethod("size:", Object::stSize)
         .addMethod("hash", Object::stIdentityHash);
 });
 
@@ -377,12 +381,20 @@ SpecialNativeClassFactory Magnitude::Factory("Magnitude", SCI_Magnitude, &Object
 });
 
 // Number
+int Number::stMakePoint(InterpreterProxy *interpreter)
+{
+    return interpreter->primitiveFailed();
+}
+
 SpecialNativeClassFactory Number::Factory("Number", SCI_Number, &Magnitude::Factory, [](ClassBuilder &builder) {
+    builder
+        .addPrimitiveMethod(18, "@", Number::stMakePoint);
 });
 
 // Integer
 SpecialNativeClassFactory Integer::Factory("Integer", SCI_Integer, &Number::Factory, [](ClassBuilder &builder) {
 });
+
 
 // SmallInteger
 int SmallInteger::stPrintString(InterpreterProxy *interpreter)
@@ -418,13 +430,546 @@ int SmallInteger::stPrintString(InterpreterProxy *interpreter)
     return interpreter->returnOop(result);
 }
 
+int SmallInteger::stAdd(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnInteger(ia + ib);
+}
+
+int SmallInteger::stSub(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnInteger(ia - ib);
+}
+
+int SmallInteger::stLess(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia < ib);
+}
+
+int SmallInteger::stGreater(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia > ib);
+}
+
+int SmallInteger::stLessEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia <= ib);
+}
+
+int SmallInteger::stGreaterEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia >= ib);
+}
+
+int SmallInteger::stEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia == ib);
+}
+
+int SmallInteger::stNotEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnBoolean(ia != ib);
+}
+
+int SmallInteger::stMul(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    auto result = ia * ib;
+    if(!signedFitsInSmallInteger(result) || result / ib != ia)
+        return interpreter->primitiveFailed();
+
+    return interpreter->returnInteger(result);
+}
+
+int SmallInteger::stDiv(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    if (ib == 0 || (ia % ib != 0))
+        return interpreter->primitiveFailed();
+
+    return interpreter->returnInteger(divideRoundNeg(ia, ib));
+}
+
+int SmallInteger::stMod(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    if (ib == 0)
+        return interpreter->primitiveFailed();
+
+    return interpreter->returnInteger(moduleRoundNeg(ia, ib));
+}
+
+int SmallInteger::stIntegerDivide(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    if (ib == 0)
+        return interpreter->primitiveFailed();
+    return interpreter->returnInteger(divideRoundNeg(ia, ib));
+}
+
+int SmallInteger::stQuotient(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    if(ib == 0)
+        return interpreter->primitiveFailed();
+    return interpreter->returnInteger(ia / ib);
+}
+
+int SmallInteger::stBitAnd(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnInteger(ia & ib);
+}
+
+int SmallInteger::stBitOr(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnInteger(ia | ib);
+}
+
+int SmallInteger::stBitXor(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    return interpreter->returnInteger(ia ^ ib);
+}
+
+int SmallInteger::stBitShift(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isSmallInteger() || !b.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = a.decodeSmallInteger();
+    auto ib = b.decodeSmallInteger();
+    if(ib < 0)
+        return interpreter->returnInteger(ia >> SmallIntegerValue(-ib));
+    return interpreter->returnInteger(ia << ib);
+}
+
+int SmallInteger::stAsFloat(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto v = interpreter->getReceiver();
+    if (!v.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto ia = v.decodeSmallInteger();
+    return interpreter->returnFloat((double)ia);
+}
+
 SpecialNativeClassFactory SmallInteger::Factory("SmallInteger", SCI_SmallInteger, &Integer::Factory, [](ClassBuilder &builder) {
     builder
+        .addPrimitiveMethod(1, "+", SmallInteger::stAdd)
+        .addPrimitiveMethod(2, "-", SmallInteger::stSub)
+        .addPrimitiveMethod(3, "<", SmallInteger::stLess)
+        .addPrimitiveMethod(4, ">", SmallInteger::stGreater)
+        .addPrimitiveMethod(5, "<=", SmallInteger::stLessEqual)
+        .addPrimitiveMethod(6, ">=", SmallInteger::stGreaterEqual)
+        .addPrimitiveMethod(7, "=", SmallInteger::stEqual)
+        .addPrimitiveMethod(8, "~=", SmallInteger::stNotEqual)
+        .addPrimitiveMethod(9, "*", SmallInteger::stMul)
+        .addPrimitiveMethod(10, "/", SmallInteger::stDiv)
+        .addPrimitiveMethod(11, "\\\\", SmallInteger::stMod)
+        .addPrimitiveMethod(12, "//", SmallInteger::stIntegerDivide)
+        .addPrimitiveMethod(13, "quo:", SmallInteger::stQuotient)
+        .addPrimitiveMethod(14, "bitAnd:", SmallInteger::stBitAnd)
+        .addPrimitiveMethod(15, "bitOr:", SmallInteger::stBitOr)
+        .addPrimitiveMethod(16, "bitXor:", SmallInteger::stBitXor)
+        .addPrimitiveMethod(17, "bitShift:", SmallInteger::stBitShift)
+
+        .addPrimitiveMethod(40, "asFloat", SmallInteger::stAsFloat)
+
         .addMethod("printString", SmallInteger::stPrintString);
 });
 
 // Float
+int Float::stAdd(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa + fb);
+}
+
+int Float::stSub(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa - fb);
+}
+
+int Float::stLess(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa < fb);
+}
+
+int Float::stGreater(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa > fb);
+}
+
+int Float::stLessEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa <= fb);
+}
+
+int Float::stGreaterEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa >= fb);
+}
+
+int Float::stEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa == fb);
+}
+
+int Float::stNotEqual(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa != fb);
+}
+
+int Float::stMul(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa * fb);
+}
+
+int Float::stDiv(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto a = interpreter->getReceiver();
+    auto b = interpreter->getTemporary(0);
+    if (!a.isFloatOrInt() || !b.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fa = a.decodeFloatOrInt();
+    auto fb = b.decodeFloatOrInt();
+    return interpreter->returnFloat(fa / fb);
+}
+
+int Float::stTruncated(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto v = interpreter->getReceiver();
+    if (!v.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fv = v.decodeFloatOrInt();
+    double fractPart, integerPart;
+    fractPart = modf(fv, &integerPart);
+    return interpreter->returnInteger((SmallIntegerValue)integerPart);
+}
+
+int Float::stFractionPart(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto v = interpreter->getReceiver();
+    if (!v.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fv = v.decodeFloatOrInt();
+    double fractPart, integerPart;
+    fractPart = modf(fv, &integerPart);
+    return interpreter->returnFloat(fractPart);
+}
+
+int Float::stExponent(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto v = interpreter->getReceiver();
+    if (!v.isFloatOrInt())
+        return interpreter->primitiveFailed();
+
+    auto fv = v.decodeFloatOrInt();
+    int exp;
+     frexp(fv, &exp);
+
+    return interpreter->returnInteger(exp);
+}
+
+int Float::stTimesTwoPower(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto v = interpreter->getReceiver();
+    auto exp = interpreter->getTemporary(0);
+    if (!v.isFloatOrInt() || !exp.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto fv = v.decodeFloatOrInt();
+    auto fexp = exp.decodeSmallInteger();
+    return interpreter->returnFloat(ldexp(fv, (int)fexp));
+}
+
 SpecialNativeClassFactory Float::Factory("Float", SCI_Float, &Number::Factory, [](ClassBuilder &builder) {
+    builder
+        .variableBits8()
+
+        .addPrimitiveMethod(41, "+", Float::stAdd)
+        .addPrimitiveMethod(42, "-", Float::stSub)
+        .addPrimitiveMethod(43, "<", Float::stLess)
+        .addPrimitiveMethod(44, ">", Float::stGreater)
+        .addPrimitiveMethod(45, "<=", Float::stLessEqual)
+        .addPrimitiveMethod(46, ">=", Float::stGreaterEqual)
+        .addPrimitiveMethod(47, "=", Float::stEqual)
+        .addPrimitiveMethod(48, "~=", Float::stNotEqual)
+        .addPrimitiveMethod(49, "*", Float::stMul)
+        .addPrimitiveMethod(50, "/", Float::stDiv)
+        .addPrimitiveMethod(51, "truncated", Float::stTruncated)
+        .addPrimitiveMethod(52, "fractionPart", Float::stFractionPart)
+        .addPrimitiveMethod(53, "exponent", Float::stExponent)
+        .addPrimitiveMethod(54, "timesTwoPower:", Float::stTimesTwoPower);
+
 });
 
 // SmallFloat

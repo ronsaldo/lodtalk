@@ -274,7 +274,8 @@ int IdentityDictionary::stPutAssociation(InterpreterProxy *interpreter)
     Oop selfOop = interpreter->getReceiver();
     Oop association = interpreter->getTemporary(0);
     auto self = reinterpret_cast<IdentityDictionary*> (selfOop.pointer);
-    return interpreter->returnOop(self->putAssociation(interpreter->getContext(), association));
+    self->putAssociation(interpreter->getContext(), association);
+    return interpreter->returnOop(interpreter->getTemporary(0));
 }
 
 int IdentityDictionary::stAssociationAtOrNil(InterpreterProxy *interpreter)

@@ -1,10 +1,11 @@
 #include <stdarg.h>
 #include <math.h>
-#include "StackMemory.hpp"
 #include "StackInterpreter.hpp"
+#include "StackMemory.hpp"
 #include "BytecodeSets.hpp"
-#include "Lodtalk/Exception.hpp"
 #include "Constants.hpp"
+#include "Lodtalk/Exception.hpp"
+#include "Lodtalk/Math.hpp"
 
 namespace Lodtalk
 {
@@ -25,6 +26,7 @@ public:
     // Stack manipulation
     virtual void pushOop(Oop oop) override;
     virtual void pushSmallInteger(SmallIntegerValue value) override;
+    virtual void pushFloat(double value) override;
 
 	virtual Oop &stackOopAt(size_t index) override;
 	virtual Oop &stackTop() override;
@@ -46,7 +48,10 @@ public:
     virtual int returnFalse();
     virtual int returnTop() override;
     virtual int returnReceiver() override;
+    virtual int returnBoolean(bool value) override;
+    virtual int returnFloat(double value) override;
     virtual int returnSmallInteger(SmallIntegerValue value) override;
+    virtual int returnInteger(SmallIntegerValue value) override;
     virtual int returnOop(Oop value) override;
     virtual int returnExternalHandle(void *handle) override;
     virtual int returnExternalPointer(void *pointer) override;
@@ -168,6 +173,11 @@ public:
 		stack->pushUInt(value);
 	}
 
+    void pushSmallIntegerObject(SmallIntegerValue value)
+    {
+        pushOop(Oop::encodeSmallInteger(value));
+    }
+
     void pushIntegerObject(int64_t value)
     {
         auto oop = context->signedInt64ObjectFor(value);
@@ -272,7 +282,7 @@ public:
 		// Push the return value.
 		pushOop(value);
 
-		// If there is no, then it means that we are returning.
+		// If there is no pc, then it means that we are returning.
 		if(pc)
 		{
 			// Re fetch the frame data to continue.
@@ -405,23 +415,40 @@ public:
         // TODO: This is an opportunity to stop myself.
     }
 
-    Oop lookupMessage(Oop receiver, Oop selector)
+    Behavior *getLookupClass(Oop receiver, bool superLookup)
     {
-    	auto classIndex = classIndexOf(receiver);
-    	auto classOop = context->getClassFromIndex(classIndex);
-    	assert(!isNil(classOop));
+        if (superLookup)
+        {
+            auto methodClass = method->getMethodClass();
+            auto behavior = reinterpret_cast<Behavior*> (methodClass.pointer);
+            return behavior->superclass;
+        }
+        else
+        {
+            auto classIndex = classIndexOf(receiver);
+            auto classOop = context->getClassFromIndex(classIndex);
+            assert(!isNil(classOop));
 
-    	// Lookup the method
-    	auto behavior = reinterpret_cast<Behavior*> (classOop.pointer);
-    	return behavior->lookupSelector(selector);
+            // Cast the class.
+            return reinterpret_cast<Behavior*> (classOop.pointer);
+        }
     }
 
-	void sendSelectorArgumentCount(Oop selector, size_t argumentCount)
+    Oop lookupMessage(Oop receiver, Oop selector, bool superLookup)
+    {
+        auto lookupClass = getLookupClass(receiver, superLookup);
+        if (isNil(lookupClass))
+            return nilOop();
+
+    	return lookupClass->lookupSelector(selector);
+    }
+
+	void sendSelectorArgumentCount(Oop selector, size_t argumentCount, bool superLookup = false)
 	{
 		assert(argumentCount <= CompiledMethodHeader::ArgumentMask);
 
 		// Get the receiver.
-		auto newReceiver = stack->stackOopAtOffset(argumentCount * sizeof(Oop));
+		auto &newReceiver = stack->stackOopAtOffset(argumentCount * sizeof(Oop));
         auto newReceiverClassIndex = classIndexOf(newReceiver);
 		//printf("Send #%s [%s]%p\n", context->getByteSymbolData(selector).c_str(), context->getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 
@@ -441,12 +468,39 @@ public:
         }
 
 		// Find the called method
-		auto calledMethodOop = lookupMessage(newReceiver, selector);
+		auto calledMethodOop = lookupMessage(newReceiver, selector, superLookup);
 		if(calledMethodOop.isNil())
 		{
-			// TODO: Send a DNU
-            printf("TODO: Send DNU  #%s [%s]%p\n", context->getByteSymbolData(selector).c_str(), context->getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
-			LODTALK_UNIMPLEMENTED();
+            pushOop(selector);
+            auto &actualSelector = stack->stackOopAtOffset(0);
+
+            // Push the arguments into an array.
+            auto array = Array::basicNativeNew(context, argumentCount);
+            fetchFrameData();
+            auto arrayData = reinterpret_cast<Oop*> (array->getFirstFieldPointer());
+            for (size_t i = 0; i < argumentCount; ++i)
+                arrayData[argumentCount - i - 1] = stack->stackOopAtOffset((i + 1) * sizeof(Oop));
+            pushOop(Oop::fromPointer(array));
+
+            // Construct the message object.
+            auto messageObject = Message::create(context);
+            fetchFrameData();
+            messageObject->selector = actualSelector;
+            messageObject->args = popOop();
+            messageObject->lookupClass = Oop::fromPointer(getLookupClass(newReceiver, superLookup));
+
+            // Replace the arguments with the message object.
+            popMultiplesOops(argumentCount + 1);
+            pushOop(Oop::fromPointer(messageObject));
+            argumentCount = 1;
+
+            // Replace the selector
+            selector = context->getSpecialMessageSelector(SpecialMessageSelector::DoesNotUnderstand);
+
+            // Find the doesNotUnderstand: message handler.
+            calledMethodOop = lookupMessage(newReceiver, selector, superLookup);
+            if (calledMethodOop.isNil())
+                errorFormat("Failed to send doesNotUnderstand: for selector #%s in %s", context->getByteSymbolData(messageObject->selector).c_str(), context->getClassNameOfObject(newReceiver).c_str());
 		}
 
 		// Get the called method type
@@ -499,10 +553,10 @@ public:
         return -1;
     }
 private:
-    void sendLiteralIndexArgumentCount(size_t literalIndex, size_t argumentCount)
+    void sendLiteralIndexArgumentCount(size_t literalIndex, size_t argumentCount, bool superLookup = false)
     {
         auto selector = getLiteral(literalIndex);
-        sendSelectorArgumentCount(selector, argumentCount);
+        sendSelectorArgumentCount(selector, argumentCount, superLookup);
     }
 
     void sendSpecialArgumentCount(SpecialMessageSelector specialSelectorId, int argumentCount)
@@ -659,7 +713,13 @@ private:
 
 	void interpretPushThisContext()
 	{
-		LODTALK_UNIMPLEMENTED();
+        fetchNextInstructionOpcode();
+
+        // Ensure my frame is married.
+        stack->ensureFrameIsMarried();
+        fetchFrameData();
+
+        pushOop(stack->getThisContext());
 	}
 
 	void interpretDuplicateStackTop()
@@ -836,7 +896,19 @@ private:
 
 	void interpretSuperSend()
 	{
-		LODTALK_UNIMPLEMENTED();
+        // Fetch the data.
+        int data = fetchByte();
+
+        // Decode the literal index and argument index
+        auto argumentCount = (data & BytecodeSet::Send_ArgumentCountMask) + extendB * BytecodeSet::Send_ArgumentCountCount;
+        auto literalIndex = ((data >> BytecodeSet::Send_LiteralIndexShift) & BytecodeSet::Send_LiteralIndexMask) + extendA * BytecodeSet::Send_LiteralIndexCount;
+
+        // Clear the extension values.
+        extendA = 0;
+        extendB = 0;
+
+        // Send the message
+        sendLiteralIndexArgumentCount(literalIndex, argumentCount, true);
 	}
 
 	void interpretTrapOnBehavior()
@@ -1073,13 +1145,13 @@ private:
             auto cb = b.decodeCharacter();
             pushOop(Oop::encodeCharacter(ca + cb));
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(fa + fb);
         }
         else
@@ -1111,13 +1183,13 @@ private:
             auto cb = b.decodeCharacter();
             pushOop(Oop::encodeCharacter(ca + cb));
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(fa + fb);
         }
         else
@@ -1149,13 +1221,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca < cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa < fb);
         }
         else
@@ -1187,13 +1259,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca > cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa > fb);
         }
         else
@@ -1225,13 +1297,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca <= cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa <= fb);
         }
         else
@@ -1263,13 +1335,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca >= cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa >= fb);
         }
         else
@@ -1301,13 +1373,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca == cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa == fb);
         }
         else
@@ -1339,13 +1411,13 @@ private:
             auto cb = b.decodeCharacter();
             pushBoolean(ca != cb);
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushBoolean(fa != fb);
         }
         else
@@ -1361,59 +1433,22 @@ private:
 
         if(a.isSmallInteger() && b.isSmallInteger())
         {
-            fetchNextInstructionOpcode();
-            popMultiplesOops(2);
-
             auto ia = a.decodeSmallInteger();
             auto ib = b.decodeSmallInteger();
 
-            if(!ia || !ib)
+            auto result = ia * ib;
+
+            // Check for overflow by seeing if the computation is reversible. This is technique is used in the Squeak vm.
+            if (result / ib == ia)
             {
-                pushOop(Oop::encodeSmallInteger(0));
+                fetchNextInstructionOpcode();
+                popMultiplesOops(2);
+                pushIntegerObject(result);
             }
             else
             {
-                auto signA = ia < 0 ? -1 : 1;
-                auto signB = ib < 0 ? -1 : 1;
-                if(signA == signB)
-                {
-                    // Positive result
-                    if(ia > SmallIntegerMax / ib)
-                    {
-                        // Overflow
-                        LODTALK_UNIMPLEMENTED();
-                    }
-                    else
-                    {
-                        pushOop(Oop::encodeSmallInteger(ia*ib));
-                    }
-                }
-                else if(signA == -1)
-                {
-                    // A is negative, B is positive
-                    if(ia < SmallIntegerMin / ib)
-                    {
-                        // Underflow
-                        LODTALK_UNIMPLEMENTED();
-                    }
-                    else
-                    {
-                        pushOop(Oop::encodeSmallInteger(ia*ib));
-                    }
-                }
-                else
-                {
-                    // A is positive, B is negative
-                    if(ib < SmallIntegerMin / ia)
-                    {
-                        // Underflow
-                        LODTALK_UNIMPLEMENTED();
-                    }
-                    else
-                    {
-                        pushOop(Oop::encodeSmallInteger(ia*ib));
-                    }
-                }
+                // Overflow/underflow.
+                sendSpecialArgumentCount(SpecialMessageSelector::Multiply, 1);
             }
         }
         else if(a.isCharacter() && b.isCharacter())
@@ -1425,13 +1460,13 @@ private:
             auto cb = b.decodeCharacter();
             pushOop(Oop::encodeCharacter(ca * cb));
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(fa * fb);
         }
         else
@@ -1447,28 +1482,28 @@ private:
 
         if(a.isSmallInteger() && b.isSmallInteger())
         {
-            fetchNextInstructionOpcode();
-            popMultiplesOops(2);
-
             auto ia = a.decodeSmallInteger();
             auto ib = b.decodeSmallInteger();
             if(ia % ib == 0)
             {
+                popMultiplesOops(2);
+                fetchNextInstructionOpcode();
+
                 pushOop(Oop::encodeSmallInteger(ia / ib));
             }
             else
             {
-                // TODO: Make a fraction.
-                LODTALK_UNIMPLEMENTED();
+                // Allow the image side to make a fraction.
+                sendSpecialArgumentCount(SpecialMessageSelector::Divide, 1);
             }
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(fa / fb);
         }
         else
@@ -1489,23 +1524,15 @@ private:
 
             auto ia = a.decodeSmallInteger();
             auto ib = b.decodeSmallInteger();
-            if(ia % ib == 0)
-            {
-                pushOop(Oop::encodeSmallInteger(ia % ib));
-            }
-            else
-            {
-                // TODO: Make a fraction.
-                LODTALK_UNIMPLEMENTED();
-            }
+            pushSmallIntegerObject(moduleRoundNeg(ia, ib));
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(fa - floor(fa/fb)*fb);
         }
         else
@@ -1553,18 +1580,15 @@ private:
 
             auto ia = a.decodeSmallInteger();
             auto ib = b.decodeSmallInteger();
-            auto div = ia / ib;
-            if(ib * div > ia)
-                --div;
-            pushOop(Oop::encodeSmallInteger(div));
+            pushSmallIntegerObject(divideRoundNeg(ia, ib));
         }
-        else if(a.isSmallFloat() && b.isSmallFloat())
+        else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
             fetchNextInstructionOpcode();
             popMultiplesOops(2);
 
-            auto fa = a.decodeSmallFloat();
-            auto fb = b.decodeSmallFloat();
+            auto fa = a.decodeFloatOrInt();
+            auto fb = b.decodeFloatOrInt();
             pushFloatObject(floor(fa/fb));
         }
         else
@@ -1965,6 +1989,11 @@ void StackInterpreterProxy::pushSmallInteger(SmallIntegerValue value)
     pushOop(Oop::encodeSmallInteger(value));
 }
 
+void StackInterpreterProxy::pushFloat(double value)
+{
+    interpreter->pushFloatObject(value);
+}
+
 Oop &StackInterpreterProxy::stackOopAt(size_t index)
 {
     return interpreter->stackOopAt(index);
@@ -2046,9 +2075,29 @@ int StackInterpreterProxy::returnReceiver()
     return 0;
 }
 
+int StackInterpreterProxy::returnBoolean(bool value)
+{
+    interpreter->returnValue(value ? trueOop() : falseOop());
+    return 0;
+}
+
 int StackInterpreterProxy::returnSmallInteger(SmallIntegerValue value)
 {
     interpreter->returnValue(Oop::encodeSmallInteger(value));
+    return 0;
+}
+
+int StackInterpreterProxy::returnFloat(double value)
+{
+    interpreter->pushFloatObject(value);
+    interpreter->returnTop();
+    return 0;
+}
+
+int StackInterpreterProxy::returnInteger(SmallIntegerValue value)
+{
+    interpreter->pushIntegerObject(value);
+    interpreter->returnTop();
     return 0;
 }
 

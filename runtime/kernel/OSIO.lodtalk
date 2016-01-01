@@ -10,3 +10,8 @@ self method [
 printString: aString
     self write: aString offset: 0 size: aString size to: self stdout
 ].
+
+self method [
+printError: aString
+    self write: aString offset: 0 size: aString size to: self stderr
+].

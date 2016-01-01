@@ -21,3 +21,8 @@ self method [
 receiver
     ^ receiver
 ].
+
+self method [
+contextTag
+    ^ self
+].

@@ -127,6 +127,13 @@ public:
 		return getFirstLiteralPointer()[classBindingIndex];
 	}
 
+    Oop getMethodClass()
+    {
+        auto association = reinterpret_cast<Association*> (getClassBinding().pointer);
+        assert(!isNil(association));
+        return association->value;
+    }
+
     Oop dump();
 
     static int stNewMethodWithHeader(InterpreterProxy *interpreter);
@@ -225,18 +232,20 @@ public:
 };
 
 /**
- * Message send
+ * Message
  */
-class MessageSend: public Object
+class Message: public Object
 {
 public:
     static SpecialNativeClassFactory Factory;
 
-    static const int MessageSendVariableCount = 3;
+    static Message *create(VMContext *context);
 
-    Oop receiver;
+    static const int MessageVariableCount = 3;
+
     Oop selector;
-    Oop arguments;
+    Oop args;
+    Oop lookupClass;
 };
 
 } // End of namespace Lodtalk

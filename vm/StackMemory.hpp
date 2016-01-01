@@ -8,7 +8,7 @@
 
 namespace Lodtalk
 {
-static const size_t StackMemoryPageSize = 4096; // 4 KB
+static const size_t StackMemoryPageSize = 4096*2; // 4 KB
 
 class CompiledMethod;
 

@@ -1,0 +1,87 @@
+"Exception"
+self class: Exception class.
+self method [
+signal
+    ^ self new signal
+].
+
+self method [
+signal: aStringMessage
+    ^ self new signal: aStringMessage
+].
+
+self class: Exception.
+
+self method [
+messageText
+    ^ messageText
+].
+
+self method [
+messageText: aString
+    messageText := aString
+].
+
+self method [
+messageText: aString
+    messageText := aString
+].
+
+self method [
+signal: aMessage
+    self messageText: aMessage;
+        signal
+].
+
+self method [
+signal
+    signalContext := thisContext contextTag.
+].
+
+"Error"
+self class: Error.
+
+"MessageNotUnderstood"
+self class: MessageNotUnderstood.
+
+self method [
+message
+    ^ message
+].
+
+self method [
+message: aMessage
+    message := aMessage
+].
+
+self method [
+receiver
+    ^ receiver
+].
+
+self method [
+receiver: anObject
+    receiver := anObject
+].
+
+"UnhandledError"
+self class: UnhandledError.
+
+self method [
+exception
+    ^ exception
+].
+
+self method [
+exception: anException
+    exception := anException
+].
+
+"Halt"
+self class: Halt class.
+self method [
+now
+    self signal
+].
+
+self class: Halt.
