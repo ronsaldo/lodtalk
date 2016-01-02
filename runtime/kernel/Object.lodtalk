@@ -12,8 +12,8 @@ halt
 
 self method [
 doesNotUnderstand: aMessage
-    OSIO printString: '
-doesNotUnderstand called
-'
-    Halt now
+    ^ MessageNotUnderstood new
+        receiver: self;
+        message: aMessage;
+        signal
 ].

@@ -54,6 +54,12 @@ signal
     ^ signalContext nextHandlerContext handleSignal: self
 ].
 
+self method [
+resumeUnchecked: returnValue
+    OSIO printLine: 'Exception resumption is unsupported.'.
+    Smalltalk exitToDebugger.
+].
+
 "Error"
 self class: Error.
 
@@ -83,6 +89,14 @@ receiver
 self method [
 receiver: anObject
     receiver := anObject
+].
+
+self method [
+defaultAction
+    OSIO printLine: 'Message not understood'.
+    OSIO printLine: receiver.
+    OSIO printLine: message selector.
+    Smalltalk exitToDebugger.
 ].
 
 "UnhandledError"
@@ -116,16 +130,17 @@ exception: anException
 self class: Halt class.
 
 self method [
-defaultAction
-    Smalltalk nativeBreakpoint.
-].
-
-self method [
 now
     self signal
 ].
 
 self class: Halt.
+
+self method [
+defaultAction
+    OSIO printLine: 'Halt action'.
+    Smalltalk nativeBreakpoint.
+].
 
 "Undefined object"
 self class: UndefinedObject.

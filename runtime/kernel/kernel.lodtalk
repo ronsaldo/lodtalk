@@ -19,6 +19,7 @@ self
     executeFileNamed: 'Context.lodtalk';
     executeFileNamed: 'AdditionalMethodState.lodtalk';
     executeFileNamed: 'CompiledMethod.lodtalk';
+    executeFileNamed: 'Message.lodtalk';
     executeFileNamed: 'Number.lodtalk';
     executeFileNamed: 'Integer.lodtalk';
     executeFileNamed: 'BlockClosure.lodtalk';

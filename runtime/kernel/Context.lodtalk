@@ -42,12 +42,12 @@ isHandlerContext
 
 self method [
 isHandlerOrSignalingContext
-    ^ self method primitive = 199
+    ^ method ifNotNil: [ method primitive = 199 ] ifNil: [ false ]
 ].
 
 self method [
 isUnwindContext
-    ^ self method primitive = 198
+    ^ method ifNotNil: [ method primitive = 198 ] ifNil: [ false ]
 ].
 
 self method [
@@ -72,17 +72,10 @@ findNextHandlerOrSignalingContext
     | context |
     context := self.
 
-    "OSIO printLine: 'findNextHandlerOrSignalingContext'."
-    OSIO printLine: context == nil.
-
     [ context == nil ] whileFalse: [
-        OSIO printLine: 'check context'.
-        OSIO printLine: context.
         context isHandlerOrSignalingContext ifTrue: [ ^ context ].
         context := context sender.
     ].
-
-    OSIO printLine: 'context end'.
 
     ^ nil
 ].

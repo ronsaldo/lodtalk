@@ -1,0 +1,18 @@
+"Script context methods"
+self class: Message.
+self category: 'accessing'.
+
+self method [
+selector
+    ^ selector
+].
+
+self method [
+args
+    ^ args
+].
+
+self method [
+lookupClass
+    ^ lookupClass
+].
