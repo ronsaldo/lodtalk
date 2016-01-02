@@ -4,20 +4,16 @@ Object subclass: #Exception
     instanceVariableNames: 'messageText tag signaler signalContext handleContext outerContext'
     category: 'Kernel-Exceptions'.
 
-"Error"
 Exception subclass: #Error
     category: 'Kernel-Exceptions'.
 
-"MessageNotUnderstood"
 Error subclass: #MessageNotUnderstood
     instanceVariableNames: 'message receiver'
     category: 'Kernel-Exceptions'.
 
-"UnhandledError"
 Exception subclass: #UnhandledError
     instanceVariableNames: 'exception'
     category: 'Kernel-Exceptions'.
 
-"Halt"
 Exception subclass: #Halt
     category: 'Kernel-Exceptions'.

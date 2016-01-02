@@ -282,12 +282,12 @@ public:
 		// Push the return value.
 		pushOop(value);
 
+        // Re fetch the frame data to continue.
+        fetchFrameData();
+
 		// If there is no pc, then it means that we are returning.
 		if(pc)
 		{
-			// Re fetch the frame data to continue.
-			fetchFrameData();
-
 			// Fetch the next instruction
 			fetchNextInstructionOpcode();
 		}
@@ -1942,12 +1942,22 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 
 void StackInterpreter::fetchFrameData()
 {
+    if (!stack->getFramePointer())
+    {
+        // Should never reach here.
+        abort();
+        return;
+    }
+
 	// Decode the frame metadata.
 	decodeFrameMetaData(stack->getMetadata(), this->hasContext, this->isBlock, argumentCount);
 
 	// Get the method and the literal array
 	method = stack->getMethod();
-	literalArray = method->getFirstLiteralPointer();
+    if (method)
+        literalArray = method->getFirstLiteralPointer();
+    else
+        literalArray = nullptr;
 }
 
 void StackInterpreter::interpret()

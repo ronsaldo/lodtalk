@@ -62,6 +62,7 @@ public:
 	static int stAtPut(InterpreterProxy *interpreter);
     static int stIdentityEqual(InterpreterProxy *interpreter);
     static int stIdentityHash(InterpreterProxy *interpreter);
+    static int stNativeBreak(InterpreterProxy *interpreter);
 
     static SpecialNativeClassFactory Factory;
 };

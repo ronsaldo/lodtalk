@@ -189,6 +189,11 @@ int Object::stIdentityHash(InterpreterProxy *interpreter)
     return interpreter->returnSmallInteger(identityHashOf(receiver));
 }
 
+int Object::stNativeBreak(InterpreterProxy *interpreter)
+{
+    return interpreter->returnReceiver();
+}
+
 // Object
 SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
     builder
@@ -202,7 +207,8 @@ SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Fa
         .addMethod("at:", Object::stAt)
         .addMethod("at:put:", Object::stAtPut)
         .addMethod("size:", Object::stSize)
-        .addMethod("hash", Object::stIdentityHash);
+        .addMethod("hash", Object::stIdentityHash)
+        .addMethod("nativeBreak", Object::stNativeBreak);
 });
 
 // Undefined object
