@@ -263,7 +263,7 @@ void GarbageCollector::disable()
 
 uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
 {
-	//performCollection();
+	performCollection();
 	assert(objectSize >= sizeof(ObjectHeader));
 
     // Add a forwarding slot, used by compaction.
