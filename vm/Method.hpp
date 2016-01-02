@@ -136,8 +136,31 @@ public:
 
     Oop dump();
 
+    bool hasPrimitive()
+    {
+        return getHeader()->hasPrimitive();
+    }
+
+    int getPrimitiveIndex()
+    {
+        if (hasPrimitive())
+        {
+            auto bc = getFirstBCPointer();
+            return bc[1] | (bc[2] << 8);
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
     static int stNewMethodWithHeader(InterpreterProxy *interpreter);
+
+    static int stObjectAt(InterpreterProxy *interpreter);
+    static int stObjectAtPut(InterpreterProxy *interpreter);
+
     static int stDump(InterpreterProxy *interpreter);
+
 };
 
 /**
@@ -163,6 +186,9 @@ public:
 
     static const int InstructionStreamVariableCount = 2;
 
+    static const int SenderIndex = 0;
+    static const int PCIndex = 1;
+
     Oop sender;
     Oop pc;
 };
@@ -179,7 +205,14 @@ public:
     static const size_t LargeContextSlots = 62;
     static const size_t SmallContextSlots = 22;
 
+    static const int StackPointerIndex = InstructionStreamVariableCount + 0;
+
     static Context *create(VMContext *context, size_t slotCount);
+
+    bool isMarriedOrWidowed()
+    {
+        return sender.isSmallInteger();
+    }
 
     Oop getReceiver()
     {

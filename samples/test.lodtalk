@@ -120,11 +120,11 @@ main
 
     self printLine: self printClosureMaker value "outerContext closureOrNil name".
 
-    self halt.
 ].
 
 
 self function [
 main
-    Program new main
+    self halt.
+    "Program new main"
 ]

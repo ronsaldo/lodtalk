@@ -79,12 +79,12 @@ private:
 class PushReceiverVariable: public InstructionNode
 {
 public:
-	PushReceiverVariable(int index)
-		: index(index) {}
+	PushReceiverVariable(int index, bool longInstruction)
+		: index(index), longInstruction(longInstruction) {}
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
-		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
+		if(!longInstruction && index < BytecodeSet::PushReceiverVariableShortRangeSize)
 		{
 			*buffer++ = uint8_t(BytecodeSet::PushReceiverVariableShortFirst + index);
 			return buffer;
@@ -100,21 +100,22 @@ public:
 protected:
 	virtual size_t computeMaxSize()
 	{
-		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
+		if(!longInstruction && index < BytecodeSet::PushReceiverVariableShortRangeSize)
 			return 1;
         return 2 + sizeofExtA(index / 256);
 	}
 
 private:
 	int index;
+    bool longInstruction;
 };
 
 // StoreReceiverVariable
 class StoreReceiverVariable: public InstructionNode
 {
 public:
-	StoreReceiverVariable(int index)
-		: index(index) {}
+	StoreReceiverVariable(int index, bool longInstruction)
+		: index(index), longInstruction(longInstruction) {}
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
@@ -132,6 +133,7 @@ protected:
 
 private:
 	int index;
+    bool longInstruction;
 };
 
 // PushLiteral
@@ -719,10 +721,16 @@ private:
 Assembler::Assembler(VMContext *context)
     : context(context)
 {
+    usingLongInstanceVariableAccessors = false;
 }
 
 Assembler::~Assembler()
 {
+}
+
+void Assembler::useLongInstanceVariableAccessors()
+{
+    usingLongInstanceVariableAccessors = true;
 }
 
 InstructionNode *Assembler::addInstruction(InstructionNode *instruction)
@@ -925,7 +933,7 @@ InstructionNode *Assembler::pushLiteralVariable(Oop literalVariable)
 
 InstructionNode *Assembler::pushReceiverVariableIndex(int variableIndex)
 {
-	return addInstruction(new PushReceiverVariable(variableIndex));
+	return addInstruction(new PushReceiverVariable(variableIndex, usingLongInstanceVariableAccessors));
 }
 
 InstructionNode *Assembler::pushLiteralIndex(int literalIndex)
@@ -955,7 +963,7 @@ InstructionNode *Assembler::pushTemporalInVector(int temporalIndex, int vectorIn
 
 InstructionNode *Assembler::storeReceiverVariableIndex(int variableIndex)
 {
-    return addInstruction(new StoreReceiverVariable(variableIndex));
+    return addInstruction(new StoreReceiverVariable(variableIndex, usingLongInstanceVariableAccessors));
 }
 
 InstructionNode *Assembler::storeLiteralVariableIndex(int literalVariableIndex)

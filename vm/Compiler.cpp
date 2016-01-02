@@ -1067,6 +1067,8 @@ public:
 	virtual Oop visitSuperReference(SuperReference *node);
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 
+    void useLongInstanceVariableAccessors();
+
 private:
     bool generateOptimizedMessage(MessageSendNode *node, CompilerOptimizedSelector optimizedSelector);
     void generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, bool negated = false);
@@ -1752,6 +1754,11 @@ Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
 	return Oop();
 }
 
+void MethodCompiler::useLongInstanceVariableAccessors()
+{
+    gen.useLongInstanceVariableAccessors();
+}
+
 // Compiler interface
 CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
 {
@@ -1761,6 +1768,10 @@ CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &sc
 
     // Generate the actual method
 	MethodCompiler compiler(vmContext, clazz->getBinding(vmContext));
+    auto classIndex = classIndexOf(Oop::fromPointer(clazz));
+    if (classIndex == SMCI_InstructionStream || classIndex == SMCI_Context)
+        compiler.useLongInstanceVariableAccessors();
+
     return reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
 }
 

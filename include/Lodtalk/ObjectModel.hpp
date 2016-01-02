@@ -672,6 +672,11 @@ struct LODTALK_VM_EXPORT CompiledMethodHeader
         extraFlags);
 	}
 
+    bool hasPrimitive() const
+    {
+        return (oop.uintValue & HasPrimitiveBit) != 0;
+    }
+
 	size_t getLiteralCount() const
 	{
 		return (oop.uintValue >> LiteralShift) & LiteralMask;

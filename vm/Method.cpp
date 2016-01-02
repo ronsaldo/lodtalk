@@ -99,11 +99,53 @@ int CompiledMethod::stDump(InterpreterProxy *interpreter)
     return interpreter->returnReceiver();
 }
 
+int CompiledMethod::stObjectAt(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 1)
+        return interpreter->primitiveFailed();
+
+    auto selfOop = interpreter->getReceiver();
+    auto self = reinterpret_cast<CompiledMethod*> (selfOop.pointer);
+
+    auto indexOop = interpreter->getTemporary(0);
+    if(!indexOop.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto index = indexOop.decodeSmallInteger();
+    if(index < 1 || index > (SmallIntegerValue)self->getLiteralCount() + 1)
+        return interpreter->primitiveFailed();
+
+    return interpreter->returnOop(reinterpret_cast<Oop*> (self->getFirstFieldPointer())[index - 1]);
+}
+
+int CompiledMethod::stObjectAtPut(InterpreterProxy *interpreter)
+{
+    if (interpreter->getArgumentCount() != 2)
+        return interpreter->primitiveFailed();
+
+    auto selfOop = interpreter->getReceiver();
+    auto self = reinterpret_cast<CompiledMethod*> (selfOop.pointer);
+
+    auto indexOop = interpreter->getTemporary(0);
+    auto valueOop = interpreter->getTemporary(1);
+    if (!indexOop.isSmallInteger())
+        return interpreter->primitiveFailed();
+
+    auto index = indexOop.decodeSmallInteger();
+    if (index < 1 || index > (SmallIntegerValue)self->getLiteralCount() + 1)
+        return interpreter->primitiveFailed();
+
+    reinterpret_cast<Oop*> (self->getFirstFieldPointer())[index - 1] = valueOop;
+    return interpreter->returnOop(valueOop);
+}
+
 SpecialNativeClassFactory CompiledMethod::Factory("CompiledMethod", SCI_CompiledMethod, &ByteArray::Factory, [](ClassBuilder &builder) {
     builder
         .compiledMethodFormat();
 
     builder
+        .addPrimitiveClassMethod(68, "objectAt:", CompiledMethod::stObjectAt)
+        .addPrimitiveClassMethod(69, "objectAt:put:", CompiledMethod::stObjectAtPut)
         .addPrimitiveClassMethod(79, "newMethod:header:", CompiledMethod::stNewMethodWithHeader);
 
     builder

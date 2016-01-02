@@ -126,6 +126,9 @@ public:
 	CompiledMethod *generate(size_t temporalCount, size_t argumentCount, bool hasPrimitive, size_t extraSize = 0);
 
 public:
+    void useLongInstanceVariableAccessors();
+
+public:
 	InstructionNode *returnReceiver();
 	InstructionNode *returnTrue();
 	InstructionNode *returnFalse();
@@ -193,6 +196,7 @@ private:
     VMContext *context;
 	std::vector<OopRef> literals;
 	std::vector<InstructionNode*> instructionStream;
+    bool usingLongInstanceVariableAccessors;
 };
 
 } // End of namespace Method assembler

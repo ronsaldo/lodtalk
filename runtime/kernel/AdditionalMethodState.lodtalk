@@ -1,0 +1,34 @@
+self class: Object.
+self category: 'testing'.
+
+self method [
+isMethodProperties
+    ^ false
+].
+
+self class: AdditionalMethodState.
+self method [
+isMethodProperties
+    ^ true
+].
+
+self category: 'accessing'.
+self method [
+method
+    ^ method
+].
+
+self method [
+selector
+    ^ selector
+].
+
+self method [
+selector: aSelector
+    selector := aSelector
+].
+
+self method [
+setMethod: aCompiledMethod
+    method := aCompiledMethod
+].

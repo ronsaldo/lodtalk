@@ -1,0 +1,9 @@
+"Integer methods"
+"Some methods are taken from Pharo"
+self class: Integer.
+
+self category: 'bit manipulation'.
+self method [
+anyMask: mask
+    ^ (self bitAnd: mask) ~= 0
+].

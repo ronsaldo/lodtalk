@@ -3,7 +3,14 @@ self class: OSIO class.
 
 self method [
 print: anObject
-    self printString: anObject
+    self printString: anObject printString
+].
+
+self method [
+printLine: anObject
+    self printString: anObject printString;
+        printString: '
+'
 ].
 
 self method [

@@ -17,6 +17,9 @@ self
     executeFileNamed: 'Boolean.lodtalk';
     executeFileNamed: 'InstructionStream.lodtalk';
     executeFileNamed: 'Context.lodtalk';
+    executeFileNamed: 'AdditionalMethodState.lodtalk';
+    executeFileNamed: 'CompiledMethod.lodtalk';
     executeFileNamed: 'Number.lodtalk';
+    executeFileNamed: 'Integer.lodtalk';
     executeFileNamed: 'BlockClosure.lodtalk';
     executeFileNamed: 'ScriptContext.lodtalk'.

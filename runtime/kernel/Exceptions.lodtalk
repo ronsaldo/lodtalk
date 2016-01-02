@@ -12,6 +12,13 @@ signal: aStringMessage
 
 self class: Exception.
 
+self category: 'accessing'.
+
+self method [
+defaultAction
+    self subclassResponsibility
+].
+
 self method [
 messageText
     ^ messageText
@@ -23,9 +30,16 @@ messageText: aString
 ].
 
 self method [
-messageText: aString
-    messageText := aString
+messageText
+    ^ messageText
 ].
+
+self method [
+receiver
+    ^ signalContext receiver
+].
+
+self category: 'signaling'.
 
 self method [
 signal: aMessage
@@ -36,10 +50,17 @@ signal: aMessage
 self method [
 signal
     signalContext := thisContext contextTag.
+    signaler ifNil: [ signaler := self receiver ].
+    ^ signalContext nextHandlerContext handleSignal: self
 ].
 
 "Error"
 self class: Error.
+
+self method [
+defaultAction
+    UnhandledError signalForException: self
+].
 
 "MessageNotUnderstood"
 self class: MessageNotUnderstood.
@@ -65,7 +86,21 @@ receiver: anObject
 ].
 
 "UnhandledError"
+self class: UnhandledError class.
+self method [
+signalForException: exception
+    ^ self new
+        exception: exception;
+        signal
+].
+
 self class: UnhandledError.
+
+self method [
+defaultAction
+    OSIO printLine: 'Unhandled error'.
+    Smalltalk exitToDebugger.
+].
 
 self method [
 exception
@@ -79,9 +114,23 @@ exception: anException
 
 "Halt"
 self class: Halt class.
+
+self method [
+defaultAction
+    Smalltalk nativeBreakpoint.
+].
+
 self method [
 now
     self signal
 ].
 
 self class: Halt.
+
+"Undefined object"
+self class: UndefinedObject.
+
+self method [
+handleSignal: exception
+    ^ exception resumeUnchecked: exception defaultAction
+].

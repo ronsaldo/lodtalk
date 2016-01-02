@@ -267,8 +267,25 @@ public:
 		LODTALK_UNIMPLEMENTED();
 	}
 
+    void divorceContext(Context *context)
+    {
+        // TODO: Compute the actual SP value
+        context->stackp = Oop::encodeSmallInteger(0);
+    }
+
+    void widowContext(Context *context)
+    {
+        context->sender = nilOop();
+        context->pc = nilOop();
+        divorceContext(context);
+    }
+
     void localReturnValue(Oop value)
     {
+        // Widow the current context.
+        if (stack->getCurrentFrame().hasContext())
+            widowContext(reinterpret_cast<Context*> (stack->getThisContext().pointer));
+            
         // Restore the stack into beginning of the frame pointer.
 		stack->setStackPointer(stack->getFramePointer());
 		stack->setFramePointer(stack->popPointer());
@@ -376,6 +393,51 @@ public:
 		auto localVar = getInstanceVariable(receiverVarIndex);
 		pushOop(localVar);
 	}
+
+    void pushLongReceiverVariable(size_t receiverVarIndex)
+    {
+        if(receiverVarIndex <= 5 && classIndexOf(currentReceiver()) == SCI_Context)
+        {
+            auto context = reinterpret_cast<Context*> (currentReceiver().pointer);
+            if (!context->isMarriedOrWidowed())
+                return pushReceiverVariable(receiverVarIndex);
+
+            // TODO: Perform expensive check for widowed context.
+            auto contextFP = context->sender.pointer - 1;
+            StackFrame contextFrame(contextFP);
+            auto prevFP = contextFrame.getPrevFramePointer();
+
+            switch (receiverVarIndex)
+            {
+            case Context::SenderIndex:
+            {
+                if (!prevFP)
+                {
+                    pushOop(nilOop());
+                }
+                else
+                {
+                    auto previousFrame = contextFrame.getPreviousFrame();
+                    previousFrame.ensureFrameIsMarried(this->context);
+                    fetchFrameData();
+                    pushOop(previousFrame.getThisContext());
+                }
+                return;
+            }
+                break;
+            case Context::PCIndex:
+                if (contextFP == stack->getFramePointer())
+                    return pushSmallIntegerObject(pc);
+                break;
+            case Context::StackPointerIndex:
+                break;
+            }
+            auto value = getInstanceVariable(receiverVarIndex);
+            //printf("get context var %d %p\n", (int)receiverVarIndex, value.pointer);
+        }
+
+        pushReceiverVariable(receiverVarIndex);
+    }
 
 	void pushLiteralVariable(size_t literalVarIndex)
 	{
@@ -796,7 +858,7 @@ private:
         fetchNextInstructionOpcode();
         extendA = 0;
 
-        pushReceiverVariable(variableIndex);
+        pushLongReceiverVariable(variableIndex);
 	}
 
 	void interpretPushLiteralVariable()
@@ -951,7 +1013,7 @@ private:
                 fetchNextInstructionOpcode();
             }
         }
-        else if(condition != trueOop())
+        else if(condition != falseOop())
 		{
 			// If the condition is not a boolean, trap
             pushOop(condition);
@@ -1965,10 +2027,11 @@ void StackInterpreter::interpret()
 	// Reset the extensions values
 	extendA = 0;
 	extendB = 0;
+    //printf("interpret begin %d\n", pc);
 	while(pc != 0)
 	{
 		currentOpcode = nextOpcode;
-
+        //printf("interpret %03d. %s\n", currentOpcode, getSistaBytecodeName(currentOpcode).c_str());
 		switch(currentOpcode)
 		{
 #define BYTECODE_DISPATCH_NAME(name) interpret ## name

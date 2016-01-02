@@ -62,7 +62,6 @@ public:
 	static int stAtPut(InterpreterProxy *interpreter);
     static int stIdentityEqual(InterpreterProxy *interpreter);
     static int stIdentityHash(InterpreterProxy *interpreter);
-    static int stNativeBreak(InterpreterProxy *interpreter);
 
     static SpecialNativeClassFactory Factory;
 };
@@ -404,6 +403,11 @@ public:
     static SpecialNativeClassFactory Factory;
 
     static SmalltalkImage *create(VMContext *context);
+
+    static int stQuitPrimitive(InterpreterProxy *interpreter);
+    static int stExitToDebugger(InterpreterProxy *interpreter);
+    static int stNativeBreakpoint(InterpreterProxy *interpreter);
+    static int stWordSize(InterpreterProxy *interpreter);
 
     Oop globals;
 };

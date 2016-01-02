@@ -27,3 +27,51 @@ whileTrue: aBlock
 	Evaluate the argument, aBlock, as long as the value of the receiver is true."
 	self value ifTrue: [ aBlock value. self whileTrue: aBlock ]
 ].
+
+"Evaluating"
+self category: 'evaluating'.
+
+self method [
+valueNoContextSwitch
+    "This method is for compatibility with Pharo"
+    ^ self value
+].
+
+"Exceptions"
+self category: 'exceptions'.
+
+self method [
+ensure: aBlock
+    "
+    Evaluates a block after evaluating myself.
+    "
+    <primitive: 198>
+    | complete returnValue |
+    returnValue := self valueNoContextSwitch.
+    complete ifNil: [
+        complete := true.
+        aBlock value
+    ].
+
+    ^ returnValue
+].
+
+self method [
+ifCurtailed: aBlock
+    "
+    Evaluates the block only if the execution is unwound.
+    "
+    <primitive: 198>
+    | complete returnValue |
+    returnValue := self valueNoContextSwitch.
+    complete := true.
+    ^ returnValue
+].
+
+self method [
+on: exception do: handlerAction
+    <primitive: 199>
+    | handlerActive |
+    handlerActive := true.
+    ^ self value
+].

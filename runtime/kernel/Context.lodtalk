@@ -26,3 +26,76 @@ self method [
 contextTag
     ^ self
 ].
+
+self category: 'debugger access'.
+self method [
+selector
+    ^ self method selector ifNil: [ self method defaultSelector ]
+].
+
+self category: 'private-exceptions'.
+
+self method [
+isHandlerContext
+    ^ self isHandlerOrSignalingContext and: [ self selector == #on:do: ]
+].
+
+self method [
+isHandlerOrSignalingContext
+    ^ self method primitive = 199
+].
+
+self method [
+isUnwindContext
+    ^ self method primitive = 198
+].
+
+self method [
+nextHandlerContext
+    ^ self sender findNextHandlerContext
+].
+
+self method [
+findNextHandlerContext
+    | context |
+    context := self findNextHandlerOrSignalingContext.
+    context ifNil: [ ^ nil ].
+
+    context isHandlerContext ifTrue: [ ^ context].
+
+    "TODO: add support for signaling"
+].
+
+self method [
+findNextHandlerOrSignalingContext
+    <primitive: 197>
+    | context |
+    context := self.
+
+    "OSIO printLine: 'findNextHandlerOrSignalingContext'."
+    OSIO printLine: context == nil.
+
+    [ context == nil ] whileFalse: [
+        OSIO printLine: 'check context'.
+        OSIO printLine: context.
+        context isHandlerOrSignalingContext ifTrue: [ ^ context ].
+        context := context sender.
+    ].
+
+    OSIO printLine: 'context end'.
+
+    ^ nil
+].
+
+self method [
+findNextUnwindContextUpTo: aContext
+    <primitive: 195>
+    | context |
+    context := self.
+
+    [ context == nil or: [ context == aContext ] ] whileFalse: [
+        context isUnwindContext ifTrue: [ ^ context ]
+    ].
+
+    ^ nil
+].

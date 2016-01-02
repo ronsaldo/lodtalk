@@ -167,7 +167,7 @@ int Object::stAtPut(InterpreterProxy *interpreter)
     	nativeError("unimplemented");
     }
 
-    return interpreter->returnReceiver();
+    return interpreter->returnOop(value);
 }
 
 int Object::stIdentityEqual(InterpreterProxy *interpreter)
@@ -189,11 +189,6 @@ int Object::stIdentityHash(InterpreterProxy *interpreter)
     return interpreter->returnSmallInteger(identityHashOf(receiver));
 }
 
-int Object::stNativeBreak(InterpreterProxy *interpreter)
-{
-    return interpreter->returnReceiver();
-}
-
 // Object
 SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Factory, [](ClassBuilder &builder) {
     builder
@@ -207,8 +202,7 @@ SpecialNativeClassFactory Object::Factory("Object", SCI_Object, &ProtoObject::Fa
         .addMethod("at:", Object::stAt)
         .addMethod("at:put:", Object::stAtPut)
         .addMethod("size:", Object::stSize)
-        .addMethod("hash", Object::stIdentityHash)
-        .addMethod("nativeBreak", Object::stNativeBreak);
+        .addMethod("hash", Object::stIdentityHash);
 });
 
 // Undefined object
@@ -1030,9 +1024,43 @@ SmalltalkImage *SmalltalkImage::create(VMContext *context)
     return reinterpret_cast<SmalltalkImage*> (context->newObject(1, 0, OF_FIXED_SIZE, SCI_SmalltalkImage));
 }
 
+int SmalltalkImage::stQuitPrimitive(InterpreterProxy *interpreter)
+{
+    int exitCode = 0;
+    if (interpreter->getArgumentCount() == 1)
+    {
+        auto exitCodeObject = interpreter->getTemporary(0);
+        if (exitCodeObject.isSmallInteger())
+            exitCode = exitCodeObject.decodeSmallInteger();
+    }
+
+    exit(exitCode);
+}
+
+int SmalltalkImage::stExitToDebugger(InterpreterProxy *interpreter)
+{
+    abort();
+}
+
+int SmalltalkImage::stNativeBreakpoint(InterpreterProxy *interpreter)
+{
+    return interpreter->returnReceiver();
+}
+
+int SmalltalkImage::stWordSize(InterpreterProxy *interpreter)
+{
+    return interpreter->returnSmallInteger(sizeof(void*));
+}
+
 SpecialNativeClassFactory SmalltalkImage::Factory("SmalltalkImage", SCI_SmalltalkImage, &Object::Factory, [](ClassBuilder &builder) {
     builder
-        .addInstanceVariables("globals");
+        .addInstanceVariables("globals")
+
+        .addPrimitiveMethod(113, "quitPrimitive", &stQuitPrimitive)
+        .addPrimitiveMethod(114, "exitToDebugger", &stExitToDebugger)
+
+        .addMethod("nativeBreakpoint", &stNativeBreakpoint)
+        .addMethod("wordSize", &stWordSize);
 });
 
 // External handle
