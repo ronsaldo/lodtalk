@@ -213,7 +213,6 @@ uint8_t *VMHeap::getAddressSpaceEnd()
 
 uint8_t *VMHeap::allocate(size_t objectSize)
 {
-    std::unique_lock<std::mutex> (mutex);
     size_t newHeapSize = size + objectSize;
     auto result = addressSpace + size;
 
@@ -263,7 +262,12 @@ void GarbageCollector::disable()
 
 uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
 {
-	performCollection();
+    std::unique_lock<std::mutex> l(controlMutex);
+
+    auto heap = memoryManager->getHeap();
+    if (disableCount == 0 && !heap->hasCapacityFor(objectSize))
+        internalPerformCollection();
+	    
 	assert(objectSize >= sizeof(ObjectHeader));
 
     // Add a forwarding slot, used by compaction.
@@ -340,7 +344,12 @@ void GarbageCollector::registerNativeObject(Oop object)
 
 void GarbageCollector::performCollection()
 {
-	std::unique_lock<std::mutex> l(controlMutex);
+    std::unique_lock<std::mutex> l(controlMutex);
+    internalPerformCollection();
+}
+
+void GarbageCollector::internalPerformCollection()
+{
     if(disableCount > 0)
         return;
 

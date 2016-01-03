@@ -103,11 +103,13 @@ public:
         return getAddressSpace() <= pointer && pointer < getAddressSpaceEnd();
     }
 
+    inline bool hasCapacityFor(size_t newSize)
+    {
+        return size + newSize <= capacity;
+    }
+
 private:
 
-
-
-    std::mutex mutex;
     uint8_t *addressSpace;
     size_t maxCapacity;
     size_t capacity;
@@ -149,6 +151,7 @@ public:
     void disable();
 
 private:
+    void internalPerformCollection();
 
 	template<typename FT>
 	void onRootsDo(const FT &f)

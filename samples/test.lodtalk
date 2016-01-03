@@ -122,9 +122,20 @@ main
 
 ].
 
+self function [
+recursion: levels
+    OSIO printString: 'recursion enter: '; printLine: levels.
+
+    levels > 0 ifTrue: [
+        self recursion: levels - 1
+    ].
+
+    OSIO printString: 'recursion exit: '; printLine: levels.
+].
 
 self function [
 main
+    self recursion: 1000.
     self halt.
     "Program new main"
-]
+].

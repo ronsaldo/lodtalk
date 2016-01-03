@@ -275,7 +275,7 @@ VariableLookupPtr GlobalEvaluationScope::lookSymbol(Oop symbol)
 class InstanceVariableScope: public EvaluationScope
 {
 public:
-	InstanceVariableScope(const EvaluationScopePtr &parent, ClassDescription *classDesc)
+	InstanceVariableScope(const EvaluationScopePtr &parent, const Ref<ClassDescription> &classDesc)
 		: EvaluationScope(parent), classDesc(classDesc) {}
 
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
@@ -1760,7 +1760,7 @@ void MethodCompiler::useLongInstanceVariableAccessors()
 }
 
 // Compiler interface
-CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
+CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &scope, const Ref<ClassDescription> &clazz, Node *ast)
 {
     // Perform the semantic analysis
     MethodSemanticAnalysis semanticAnalyzer(vmContext, scope);
@@ -1768,7 +1768,7 @@ CompiledMethod *compileMethod(VMContext *vmContext, const EvaluationScopePtr &sc
 
     // Generate the actual method
 	MethodCompiler compiler(vmContext, clazz->getBinding(vmContext));
-    auto classIndex = classIndexOf(Oop::fromPointer(clazz));
+    auto classIndex = classIndexOf(clazz.getOop());
     if (classIndex == SMCI_InstructionStream || classIndex == SMCI_Context)
         compiler.useLongInstanceVariableAccessors();
 
@@ -1885,7 +1885,7 @@ int ScriptContext::stAddFunction(InterpreterProxy *interpreter)
 	// Check the class
 	if(!context->isClassOrMetaclass(self->globalContextClass))
 		nativeError("a global context class is needed");
-	auto clazz = reinterpret_cast<ClassDescription*> (self->globalContextClass.pointer);
+	Ref<ClassDescription> clazz(context, reinterpret_cast<ClassDescription*> (self->globalContextClass.pointer));
 
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
@@ -1926,7 +1926,7 @@ int ScriptContext::stAddMethod(InterpreterProxy *interpreter)
 	// Check the class
 	if(!context->isClassOrMetaclass(self->currentClass))
 		nativeError("a class is needed for adding a method.");
-	auto clazz = reinterpret_cast<ClassDescription*> (self->currentClass.pointer);
+	Ref<ClassDescription> clazz(context, reinterpret_cast<ClassDescription*> (self->currentClass.pointer));
 
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);

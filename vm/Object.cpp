@@ -1,4 +1,3 @@
-#include <string.h>
 #include "Lodtalk/Object.hpp"
 #include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Collections.hpp"
@@ -6,6 +5,8 @@
 #include "Lodtalk/Exception.hpp"
 #include "Lodtalk/Math.hpp"
 #include "Method.hpp"
+#include <string.h>
+#include <math.h>
 
 namespace Lodtalk
 {
@@ -1031,10 +1032,11 @@ int SmalltalkImage::stQuitPrimitive(InterpreterProxy *interpreter)
     {
         auto exitCodeObject = interpreter->getTemporary(0);
         if (exitCodeObject.isSmallInteger())
-            exitCode = exitCodeObject.decodeSmallInteger();
+            exitCode = (int)exitCodeObject.decodeSmallInteger();
     }
 
     exit(exitCode);
+    // Should never reach here.
 }
 
 int SmalltalkImage::stExitToDebugger(InterpreterProxy *interpreter)

@@ -280,12 +280,79 @@ public:
         divorceContext(context);
     }
 
+    void cannotReturnFromWidow()
+    {
+        errorFormat("cannot return from widow.");
+    }
+
+    void baseReturnValue(Oop value)
+    {
+        // Get return pc
+        pc = stack->getReturnPointer();
+
+        // If we don't have context, then we have reached the end of the stack
+        if (!hasContext)
+        {
+            // Restore the stack into beginning of the frame pointer.
+            stack->setStackPointer(stack->getFramePointer());
+            stack->setFramePointer(stack->popPointer());
+
+            // We got to the end of the stack.
+            return;
+        }
+
+        // Make sure there is a sender.
+        auto context = reinterpret_cast<Context*> (stack->getThisContext().pointer);
+        auto sender = context->sender;
+        assert(!sender.isSmallInteger());
+        if (sender.isNil())
+            cannotReturnFromWidow();
+
+        // Widow the current context. We already have the sender
+        widowContext(context);
+
+        // If the context is still married, then returning to it is easy.
+        auto senderContext = reinterpret_cast<Context*> (sender.pointer);
+        if (senderContext->isMarriedOrWidowed())
+        {
+            auto prevFramePointer = senderContext->sender.pointer - 1;
+            auto prevStackPointer = senderContext->stackp.pointer - 1;
+
+            stack->setFramePointer(prevFramePointer);
+            stack->setStackPointer(prevStackPointer);
+            stack->useNewPageFor(stack->getFramePointer());
+        }
+        else
+        {
+            LODTALK_UNIMPLEMENTED();
+        }
+     
+        // Push the return value.
+        pushOop(value);
+
+        // Re fetch the frame data to continue.
+        fetchFrameData();
+
+        // If there is no pc, then it means that we are returning.
+        if (pc)
+        {
+            // Fetch the next instruction
+            fetchNextInstructionOpcode();
+        }
+    }
+    
     void localReturnValue(Oop value)
     {
+        auto prevFramePointer = stack->getPrevFramePointer();
+        if (prevFramePointer == nullptr)
+        {
+            return baseReturnValue(value);
+        }
+
         // Widow the current context.
         if (stack->getCurrentFrame().hasContext())
             widowContext(reinterpret_cast<Context*> (stack->getThisContext().pointer));
-            
+
         // Restore the stack into beginning of the frame pointer.
 		stack->setStackPointer(stack->getFramePointer());
 		stack->setFramePointer(stack->popPointer());
@@ -308,8 +375,8 @@ public:
 			// Fetch the next instruction
 			fetchNextInstructionOpcode();
 		}
-
     }
+
 
 	void returnValue(Oop value)
 	{
@@ -1858,6 +1925,14 @@ private:
         else
             interpretPrimitive(primitiveIndex);
     }
+
+    void checkStackOverflow()
+    {
+        if (stack->checkForOveflowOrEvent())
+        {
+            fetchFrameData();
+        }
+    }
 };
 
 StackInterpreter::StackInterpreter(VMContext *context, StackMemory *stack)
@@ -1908,6 +1983,9 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	// Set the instruction pointer.
 	pc = newMethod->getFirstPCOffset();
 
+    // Check for stack overflow.
+    checkStackOverflow();
+
 	// Fetch the first instruction opcode
 	fetchNextInstructionOpcode();
 }
@@ -1944,6 +2022,9 @@ void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, size_t argum
 
     // Reset the primitive has failed flag.
     primitiveHasFailed = 0;
+
+    // Check for stack overflow.
+    checkStackOverflow();
 
     // Call the primitive
     StackInterpreterProxy proxy(this);
@@ -1997,6 +2078,9 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 
     // Set the initial pc
     pc = closure->startpc.decodeSmallInteger();
+
+    // Check for stack overflow.
+    checkStackOverflow();
 
     // Fetch the first instruction opcode
 	fetchNextInstructionOpcode();

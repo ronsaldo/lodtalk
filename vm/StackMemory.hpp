@@ -65,9 +65,14 @@ public:
 		return *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::PrevFramePointerOffset);
 	}
 
-    inline uint8_t *getReturnPointer()
+    inline void setPrevFramePointer(uint8_t *newPointer)
+    {
+        *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::PrevFramePointerOffset) = newPointer;
+    }
+
+    inline intptr_t getReturnPointer()
 	{
-		return *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::ReturnInstructionPointerOffset);
+		return *reinterpret_cast<intptr_t*> (framePointer + InterpreterStackFrame::ReturnInstructionPointerOffset);
 	}
 
 	inline CompiledMethod *getMethod()
@@ -100,6 +105,16 @@ public:
         thisContext() = newContext;
     }
 
+    inline uint8_t *getEndPointer()
+    {
+        return framePointer + InterpreterStackFrame::LastArgumentOffset + (getArgumentCount() + 1)*sizeof(Oop);
+    }
+
+    inline uint8_t *getBeginPointer()
+    {
+        return stackPointer;
+    }
+
     inline Oop &argumentAtReverseIndex(size_t index)
     {
         return reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset)[index];
@@ -122,7 +137,7 @@ public:
 
 	inline StackFrame getPreviousFrame()
 	{
-		return StackFrame(getPrevFramePointer(), framePointer + InterpreterStackFrame::LastArgumentOffset);
+		return StackFrame(getPrevFramePointer(), getEndPointer());
 	}
 
 	inline Oop &stackOopAtOffset(size_t offset)
@@ -147,11 +162,18 @@ public:
 		// Frame elements
 		Oop *frameElementsStart = reinterpret_cast<Oop*> (stackPointer);
 		Oop *frameElementsEnd = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset);
-		for(Oop *pos = frameElementsStart; pos <= frameElementsEnd; ++pos)
+		for(Oop *pos = frameElementsStart; pos < frameElementsEnd; ++pos)
 			f(*pos);
+
+        // The arguments.
+        auto argumentCount = getArgumentCount() + 1; // Plus the receiver argument.
+        Oop *arguments = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset);
+        for (size_t i = 0; i < argumentCount; ++i)
+            f(arguments[i]);
 	}
 
     void marryFrame(VMContext *context);
+    void updateMarriedSpouseState();
 
     inline int getArgumentCount()
     {
@@ -174,16 +196,83 @@ public:
             marryFrame(context);
     }
 
+    inline void ensureHasUpdatedMarriedSpouse(VMContext *context)
+    {
+        if (!hasContext())
+            marryFrame(context);
+        else
+            updateMarriedSpouseState();
+    }
+
+
 	uint8_t *framePointer;
 	uint8_t *stackPointer;
 };
 
+/**
+ * Stack memory page
+ */
+class StackPage
+{
+public:
+    StackPage(VMContext *context, uint8_t *memoryLocation);
+    ~StackPage();
+
+    VMContext *getContext()
+    {
+        return context;
+    }
+
+    inline bool isInUse()
+    {
+        return baseFramePointer != nullptr;
+    }
+
+    inline void startUsing()
+    {
+        baseFramePointer = stackPageHighest;
+        headFrame = StackFrame(nullptr, stackPageHighest);
+    }
+    
+    inline void freed()
+    {
+        baseFramePointer = nullptr;
+        headFrame = StackFrame(nullptr, nullptr);
+
+        // Remove myself from the linked list.
+        if (previousPage)
+            previousPage->nextPage = nextPage;
+        if (nextPage)
+            nextPage->previousPage = previousPage;
+        previousPage = nullptr;
+        nextPage = nullptr;
+    }
+
+    void divorceAllFrames();
+
+    VMContext *context;
+
+    uint8_t *baseFramePointer;
+    StackFrame headFrame;
+
+    uint8_t *stackPageLowest;
+    uint8_t *stackPageHighest;
+    size_t stackPageSize;
+    uint8_t *overflowLimit;
+    uint8_t *stackLimit;
+
+    StackPage *previousPage;
+    StackPage *nextPage;
+
+};
 /**
  * Stack memory for a single thread.
  */
 class StackMemory
 {
 public:
+    static constexpr size_t StackPageCount = 16;
+
 	StackMemory(VMContext *context);
 	~StackMemory();
 
@@ -192,18 +281,17 @@ public:
         return context;
     }
 
-	void setStorage(uint8_t *storage, size_t storageSize);
     void createTerminalStackFrame();
 
 public:
 	inline size_t getStackSize() const
 	{
-		return stackPageHighest - stackFrame.stackPointer;
+		return currentPage->stackPageHighest - stackFrame.stackPointer;
 	}
 
 	inline size_t getAvailableCapacity() const
 	{
-		return stackFrame.stackPointer - stackPageLowest;
+		return stackFrame.stackPointer - currentPage->stackPageLowest;
 	}
 
 	inline void pushOop(Oop oop)
@@ -296,6 +384,11 @@ public:
 		stackFrame.stackPointer = newPointer;
 	}
 
+    inline intptr_t getReturnPointer()
+    {
+        return stackFrame.getReturnPointer();
+    }
+
 	inline uint8_t *getPrevFramePointer()
 	{
 		return stackFrame.getPrevFramePointer();
@@ -338,7 +431,7 @@ public:
 
 	inline uintptr_t getMetadata()
 	{
-		return stackFrame.getMetadata();;
+		return stackFrame.getMetadata();
 	}
 
     void ensureFrameIsMarried()
@@ -349,23 +442,48 @@ public:
 	template<typename FT>
 	inline void stackFramesDo(const FT &function)
 	{
-		auto currentFrame = stackFrame;
+        writeBackFrameData();
+        auto page = currentPage;
+        for (; page && page->isInUse(); page = page->previousPage)
+        {
+            auto currentFrame = page->headFrame;
 
-		while(currentFrame.framePointer)
-		{
-			function(currentFrame);
-			currentFrame = currentFrame.getPreviousFrame();
-		}
+            while (currentFrame.framePointer)
+            {
+                function(currentFrame);
+                currentFrame = currentFrame.getPreviousFrame();
+            }
+        }
 	}
 
+    inline bool checkForOveflowOrEvent()
+    {
+        if (stackFrame.stackPointer >= currentPage->stackLimit)
+            return false;
+
+        stackOverflow();
+        return true;
+    }
+
+    void stackOverflow();
+    void writeBackFrameData();
+
+    size_t getPageIndexFor(uint8_t *pointer);
+    void useNewPageFor(uint8_t *framePointer);
+
 private:
+    StackPage *allocatePage();
+
     VMContext *context;
-	uint8_t *stackPageLowest;
-	uint8_t *stackPageHighest;
-	size_t stackPageSize;
 
-	StackFrame stackFrame;
+    std::vector<StackPage*> stackPages;
+    std::vector<StackPage*> freePages;
 
+    StackPage *currentPage;
+    StackFrame stackFrame;
+    size_t stackSize;
+    uint8_t *stackMemoryLowest;
+    uint8_t *stackMemoryHighest;
 };
 
 // Stack memories interface used by the GC
