@@ -1,10 +1,11 @@
 #ifndef LODEN_STACK_MEMORY_HPP
 #define LODEN_STACK_MEMORY_HPP
 
+#include "Lodtalk/Object.hpp"
+#include "Method.hpp"
 #include <vector>
 #include <functional>
 #include <mutex>
-#include "Lodtalk/Object.hpp"
 
 namespace Lodtalk
 {
@@ -24,6 +25,9 @@ namespace InterpreterStackFrame
 	static const int ThisContextOffset = -3*WordSize;
 	static const int ReceiverOffset = -4*WordSize;
 	static const int FirstTempOffset = -5*WordSize;
+
+    static const int FrameFixedDataSize = 6 * WordSize;
+
 }
 
 inline uintptr_t encodeFrameMetaData(bool hasContext, bool isBlock, size_t numArguments)
@@ -40,6 +44,13 @@ inline void decodeFrameMetaData(uintptr_t metadata, bool &hasContext, bool &isBl
 	hasContext = ((metadata >> 16) & 0xFF) != 0;
 }
 
+inline size_t getContextFrameSize(Context *context)
+{
+    assert(!context->isMarriedOrWidowed());
+    size_t result = InterpreterStackFrame::FrameFixedDataSize;
+    result += (context->stackp.decodeSmallInteger() + 1) * InterpreterStackFrame::WordSize;
+    return result;
+}
 
 /**
  * Stack memory commited page
@@ -200,8 +211,7 @@ public:
     {
         if (!hasContext())
             marryFrame(context);
-        else
-            updateMarriedSpouseState();
+        updateMarriedSpouseState();
     }
 
 
@@ -466,6 +476,7 @@ public:
     }
 
     void stackOverflow();
+    void makeBaseFrame(Context *context);
     void writeBackFrameData();
 
     size_t getPageIndexFor(uint8_t *pointer);

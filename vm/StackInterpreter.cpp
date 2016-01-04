@@ -280,7 +280,7 @@ public:
         divorceContext(context);
     }
 
-    void cannotReturnFromWidow()
+    void cannotReturn(Oop value)
     {
         errorFormat("cannot return from widow.");
     }
@@ -306,7 +306,7 @@ public:
         auto sender = context->sender;
         assert(!sender.isSmallInteger());
         if (sender.isNil())
-            cannotReturnFromWidow();
+            return cannotReturn(value);
 
         // Widow the current context. We already have the sender
         widowContext(context);
@@ -324,6 +324,11 @@ public:
         }
         else
         {
+            if (!senderContext->pc.isSmallInteger())
+                return cannotReturn(value);
+
+            pc = senderContext->pc.decodeSmallInteger();
+            stack->makeBaseFrame(senderContext);
             LODTALK_UNIMPLEMENTED();
         }
      

@@ -135,7 +135,7 @@ recursion: levels
 
 self function [
 main
-    self recursion: 1000.
+    self recursion: 3000.
     self halt.
     "Program new main"
 ].

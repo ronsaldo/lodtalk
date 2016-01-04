@@ -201,7 +201,7 @@ class Context: public InstructionStream
 public:
     static SpecialNativeClassFactory Factory;
 
-    static const int ContextVariableCount = InstructionStreamVariableCount + 4;
+    static const int ContextVariableCount = InstructionStreamVariableCount + 5;
     static const size_t LargeContextSlots = 62;
     static const size_t SmallContextSlots = 22;
 
@@ -223,6 +223,7 @@ public:
     CompiledMethod *method;
     Oop closureOrNil;
     Oop receiver;
+    Oop argumentCount;
     Oop data[];
 };
 

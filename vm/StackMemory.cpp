@@ -37,7 +37,37 @@ StackPage::~StackPage()
 
 void StackPage::divorceAllFrames()
 {
-    baseFramePointer = nullptr;
+    // First pass. Ensure the frames are married and that they have their context updated.
+    auto currentFrame = headFrame;
+    while (currentFrame.framePointer != 0)
+    {
+        currentFrame.ensureHasUpdatedMarriedSpouse(context);
+        currentFrame = currentFrame.getPreviousFrame();
+    }
+
+    // Get the head frame pc from the next page
+    assert(nextPage && nextPage->isInUse());
+    {
+        StackFrame nextBaseFrame(nextPage->baseFramePointer);
+        auto headContext = reinterpret_cast<Context*> (headFrame.getThisContext().pointer);
+        headContext->pc = Oop::encodeSmallInteger(nextBaseFrame.getReturnPointer());
+    }
+
+    // Second pass. Divorce
+    auto nextFrame = headFrame;
+    currentFrame = headFrame.getPreviousFrame();
+    while (currentFrame.framePointer != 0)
+    {
+        auto currentContext = reinterpret_cast<Context*> (currentFrame.getThisContext().pointer);
+        auto nextContext = reinterpret_cast<Context*> (nextFrame.getThisContext().pointer);
+        nextContext->sender = Oop::fromPointer(currentContext);
+        currentContext->pc = Oop::encodeSmallInteger(nextFrame.getReturnPointer());
+
+        nextFrame = currentFrame;
+        currentFrame = currentFrame.getPreviousFrame();
+    }
+
+    freed();
 }
 
 // Stack frame
@@ -67,7 +97,14 @@ void StackFrame::marryFrame(VMContext *vmContext)
     context->method = method;
     context->closureOrNil = closure;
     context->receiver = getReceiver();
+    context->argumentCount = Oop::encodeSmallInteger(getArgumentCount());
 
+    // Copy the arguments
+    auto argumentCount = getArgumentCount();
+    auto argumentEnd = &getArgumentAtReverseIndex(0);
+    for (size_t i = 0; i < argumentCount; ++i)
+        context->data[i] = argumentEnd[argumentCount - i - 1];
+    
     // Store the context in this frame.
     setThisContext(Oop::fromPointer(context));
     setMetadata(getMetadata() | (1 << 16));
@@ -82,6 +119,13 @@ void StackFrame::updateMarriedSpouseState()
     auto context = reinterpret_cast<Context*> (getThisContext().pointer);
     assert(!isNil(context));
     context->stackp = Oop::fromPointer(stackPointer + 1);
+
+    // Copy the temporaries back to the context.
+    auto currentTemporary = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::FirstTempOffset);
+    auto temporaryEnd = reinterpret_cast<Oop*> (stackPointer);
+    auto currentTempIndex = getArgumentCount();
+    for (;  currentTemporary >= temporaryEnd; --currentTemporary, currentTempIndex++)
+        context->data[currentTempIndex] = *currentTemporary;
 }
 
 // Stack memory for a single thread.
@@ -125,6 +169,7 @@ void StackMemory::createTerminalStackFrame()
 
     // Set the stack frame pointer.
     setFramePointer(getStackPointer());
+    currentPage->baseFramePointer = getFramePointer();
 
     // Push the nil method object.
     pushOop(Oop());
@@ -144,9 +189,14 @@ StackPage *StackMemory::allocatePage()
     StackPage *page = nullptr;
     if (freePages.empty())
     {
-        // TODO: free the least recently used page.
-        LODTALK_UNIMPLEMENTED();
-    }
+        // Find the least used page
+        auto leastUsed = currentPage;
+        for (; leastUsed->previousPage; leastUsed = leastUsed->previousPage)
+            ;
+
+        leastUsed->divorceAllFrames();
+        freePages.push_back(leastUsed);
+   }
 
     assert(!freePages.empty());
     page = freePages.back();
@@ -194,6 +244,7 @@ void StackMemory::stackOverflow()
     stackFrame.setPrevFramePointer(nullptr);
     currentPage = nextPage;
     currentPage->headFrame = stackFrame;
+    currentPage->baseFramePointer = stackFrame.framePointer;
 
     // Make sure they have contexts.
     previousFrame.ensureHasUpdatedMarriedSpouse(context);
@@ -223,6 +274,17 @@ void StackMemory::useNewPageFor(uint8_t *framePointer)
         freePages.push_back(currentPage);
     }
     currentPage = newPage;
+}
+
+void StackMemory::makeBaseFrame(Context *context)
+{
+    auto basePage = allocatePage();
+    assert(!currentPage->previousPage);
+    basePage->startUsing();
+    basePage->nextPage = currentPage;
+    currentPage->previousPage = basePage;
+
+
 }
 
 // Interface for accessing the stack memory for the current native thread.

@@ -175,7 +175,7 @@ SpecialNativeClassFactory InstructionStream::Factory("InstructionStream", SCI_In
 SpecialNativeClassFactory Context::Factory("Context", SCI_Context, &InstructionStream::Factory, [](ClassBuilder &builder) {
     builder
         .variableSizeWithInstanceVariables()
-        .addInstanceVariables("stackp", "method", "closureOrNil", "receiver");
+        .addInstanceVariables("stackp", "method", "closureOrNil", "receiver", "argumentCount");
 });
 
 Context *Context::create(VMContext *context, size_t slotCount)
