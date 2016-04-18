@@ -420,8 +420,9 @@ protected:
 		{
             OopRef keyRef(context, key);
             OopRef valueRef(context, value);
+            Ref<MethodDictionary> selfRef(context, this);
 			increaseCapacity(context);
-            return internalAtPut(context, keyRef.oop, valueRef.oop);
+            return selfRef->internalAtPut(context, keyRef.oop, valueRef.oop);
 		}
 
 		// Put the key and value.
@@ -441,6 +442,7 @@ protected:
 		// Store temporarily the data.
 		Ref<Array> oldKeys(context, keyValues);
 		Ref<Array> oldValues(context, values);
+        Ref<MethodDictionary> selfRef(context, this);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 
 		// Create the new capacity.
