@@ -212,7 +212,7 @@ protected:
 		auto keyValuesArray = getHashTableKeyValues();
 
 		// Search from the hash position to the end.
-		for(auto i = startPosition; i < capacity; ++i)
+		for(size_t i = startPosition; i < capacity; ++i)
 		{
 			// Check no association
 			auto keyValue = keyValuesArray[i];
@@ -226,7 +226,7 @@ protected:
 		}
 
 		// Search from the start to the hash position.
-		for(auto i = 0; i < startPosition; ++i)
+		for(size_t i = 0; i < startPosition; ++i)
 		{
 			// Check no association
 			auto keyValue = keyValuesArray[i];

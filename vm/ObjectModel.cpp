@@ -29,7 +29,7 @@ ObjectHeader *VMContext::newObject(size_t fixedSlotCount, size_t indexableSize, 
 			indexableSlotCount = indexableSize;
 		}
 #ifndef OBJECT_MODEL_SPUR_64
-		if(format == OF_INDEXABLE_64)
+		else if(format == OF_INDEXABLE_64)
 		{
 			indexableSlotCount = indexableSize * 2;
 			hasPrimitiveData = true;

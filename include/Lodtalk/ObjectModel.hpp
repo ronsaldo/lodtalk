@@ -56,7 +56,7 @@ struct ObjectTag
     // Dummy constants
     static const uintptr_t SmallFloat = 0;
     static const uintptr_t SmallFloatMask = 0;
-    static const uintptr_t SmallFloatShift = 0
+    static const uintptr_t SmallFloatShift = 0;
 #endif
 };
 
@@ -306,7 +306,7 @@ inline size_t variableSlotDivisor(ObjectFormat format)
 	case OF_COMPILED_METHOD_5:
 	case OF_COMPILED_METHOD_6:
 	case OF_COMPILED_METHOD_7:
-		return 1;
+		return 4;
 	default: abort();
 	}
 #endif
@@ -566,7 +566,7 @@ public:
 		if(header->slotCount == 255)
 		{
 			uint64_t *theSlotCount = reinterpret_cast<uint64_t*> (pointer + sizeof(ObjectHeader));
-			return *theSlotCount;
+			return static_cast<size_t> (*theSlotCount);
 		}
 
 		return header->slotCount;

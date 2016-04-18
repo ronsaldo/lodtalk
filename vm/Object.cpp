@@ -84,8 +84,8 @@ int Object::stAt(InterpreterProxy *interpreter)
 
     if(format >= OF_INDEXABLE_32)
     {
-#ifdef OBJECT_MODEL_SPUR_64
         auto data = reinterpret_cast<uint32_t*> (firstIndexableField);
+#ifdef OBJECT_MODEL_SPUR_64
         return interpreter->returnOop(Oop::encodeSmallInteger(data[index]));
 #else
         return interpreter->returnOop(context->positiveInt32ObjectFor(data[index]));
@@ -148,8 +148,8 @@ int Object::stAtPut(InterpreterProxy *interpreter)
     }
     else if(format >= OF_INDEXABLE_32)
     {
-#ifdef OBJECT_MODEL_SPUR_64
         auto data = reinterpret_cast<uint32_t*> (firstIndexableField);
+#ifdef OBJECT_MODEL_SPUR_64
         if(!value.isSmallInteger())
             return interpreter->primitiveFailed();
 
