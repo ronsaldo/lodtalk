@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <mutex>
+#include <string.h>
 #include "Lodtalk/VMContext.hpp"
 #include "Lodtalk/Collections.hpp"
 #include "Method.hpp"
@@ -104,7 +105,7 @@ void StackFrame::marryFrame(VMContext *vmContext)
     auto argumentEnd = &getArgumentAtReverseIndex(0);
     for (size_t i = 0; i < argumentCount; ++i)
         context->data[i] = argumentEnd[argumentCount - i - 1];
-    
+
     // Store the context in this frame.
     setThisContext(Oop::fromPointer(context));
     setMetadata(getMetadata() | (1 << 16));
