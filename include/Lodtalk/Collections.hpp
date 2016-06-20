@@ -303,7 +303,7 @@ protected:
 	void setCapacity(VMContext *context, size_t newCapacity, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		// Store temporarily the data.
-		Ref<Array> oldKeyValues(context, keyValues);
+		auto oldKeyValues = Oop::fromPointer(keyValues);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 
 		// Create the new capacity.
@@ -314,7 +314,7 @@ protected:
 		// Add back the old objects.
 		if(!oldKeyValues.isNil())
 		{
-			Oop *oldKeyValuesOops = reinterpret_cast<Oop *> (oldKeyValues->getFirstFieldPointer());
+			Oop *oldKeyValuesOops = reinterpret_cast<Oop *> (oldKeyValues.getFirstFieldPointer());
 			for(size_t i = 0; i < oldCapacity; ++i)
 			{
 				auto oldKeyValue = oldKeyValuesOops[i];
@@ -420,9 +420,8 @@ protected:
 		{
             OopRef keyRef(context, key);
             OopRef valueRef(context, value);
-            Ref<MethodDictionary> selfRef(context, this);
 			increaseCapacity(context);
-            return selfRef->internalAtPut(context, keyRef.oop, valueRef.oop);
+            return internalAtPut(context, keyRef.oop, valueRef.oop);
 		}
 
 		// Put the key and value.
@@ -440,9 +439,8 @@ protected:
 	void setCapacity(VMContext *context, size_t newCapacity)
 	{
 		// Store temporarily the data.
-		Ref<Array> oldKeys(context, keyValues);
-		Ref<Array> oldValues(context, values);
-        Ref<MethodDictionary> selfRef(context, this);
+        auto oldKeys = Oop::fromPointer(keyValues);
+        auto oldValues = Oop::fromPointer(values);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 
 		// Create the new capacity.
@@ -454,8 +452,8 @@ protected:
 		// Add back the old objects.
 		if(!oldKeys.isNil())
 		{
-			Oop *oldKeysOops = reinterpret_cast<Oop *> (oldKeys->getFirstFieldPointer());
-			Oop *oldValuesOops = reinterpret_cast<Oop *> (oldValues->getFirstFieldPointer());
+			Oop *oldKeysOops = reinterpret_cast<Oop *> (oldKeys.getFirstFieldPointer());
+			Oop *oldValuesOops = reinterpret_cast<Oop *> (oldValues.getFirstFieldPointer());
 			for(size_t i = 0; i < oldCapacity; ++i)
 			{
 				auto oldKey = oldKeysOops[i];
@@ -480,8 +478,6 @@ class LODTALK_VM_EXPORT IdentityDictionary: public Dictionary
 {
 public:
     static SpecialNativeClassFactory Factory;
-
-	struct End {};
 
 	Oop putAssociation(VMContext *context, Oop assoc)
 	{
@@ -515,8 +511,6 @@ class LODTALK_VM_EXPORT SystemDictionary: public IdentityDictionary
 {
 public:
     static SpecialNativeClassFactory Factory;
-
-	struct End {};
 
     static SystemDictionary *create(VMContext *context);
 };

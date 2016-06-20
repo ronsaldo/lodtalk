@@ -108,6 +108,11 @@ public:
         return size + newSize <= capacity;
     }
 
+    inline bool hasCapacityThresholdBeenReached()
+    {
+        return size > capacity * 4 / 5;
+    }
+
 private:
 
     uint8_t *addressSpace;
@@ -145,6 +150,10 @@ public:
 	void registerGCRoot(Oop *gcroot, size_t size);
 	void unregisterGCRoot(Oop *gcroot);
 
+    void registerThreadForGC();
+    void unregisterThreadForGC();
+    bool collectionSafePoint();
+
     void registerNativeObject(Oop object);
 
     void enable();
@@ -152,6 +161,7 @@ public:
 
 private:
     void internalPerformCollection();
+    void queueGarbageCollection();
 
 	template<typename FT>
 	void onRootsDo(const FT &f)
@@ -212,6 +222,7 @@ private:
 	OopRef *firstReference;
 	OopRef *lastReference;
     int disableCount;
+    volatile bool garbageCollectionQueued;
 };
 
 } // End of namespace Lodtalk

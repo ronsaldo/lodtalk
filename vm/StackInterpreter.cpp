@@ -182,20 +182,12 @@ public:
     {
         auto oop = context->signedInt64ObjectFor(value);
         pushOop(oop);
-
-        // The GC could have been triggered?
-        if(!oop.isSmallInteger())
-            fetchFrameData();
     }
 
     void pushFloatObject(double value)
     {
         auto oop = context->floatObjectFor(value);
         pushOop(oop);
-
-        // The GC could have been triggered?
-        if(!oop.isSmallFloat())
-            fetchFrameData();
     }
     void pushBoolean(bool value)
     {
@@ -331,7 +323,7 @@ public:
             stack->makeBaseFrame(senderContext);
             LODTALK_UNIMPLEMENTED();
         }
-     
+
         // Push the return value.
         pushOop(value);
 
@@ -345,7 +337,7 @@ public:
             fetchNextInstructionOpcode();
         }
     }
-    
+
     void localReturnValue(Oop value)
     {
         auto prevFramePointer = stack->getPrevFramePointer();
@@ -411,6 +403,11 @@ public:
 	void activateMethodFrame(CompiledMethod *method);
     void activateBlockClosure(BlockClosure *closure);
 	void fetchFrameData();
+
+    bool garbageCollectionSafePoint()
+    {
+        return context->garbageCollectionSafePoint();
+    }
 
     VMContext *getContext()
     {
@@ -491,7 +488,6 @@ public:
                 {
                     auto previousFrame = contextFrame.getPreviousFrame();
                     previousFrame.ensureFrameIsMarried(this->context);
-                    fetchFrameData();
                     pushOop(previousFrame.getThisContext());
                 }
                 return;
@@ -546,7 +542,8 @@ public:
         pc += delta;
         fetchNextInstructionOpcode();
 
-        // TODO: This is an opportunity to stop myself.
+        if(garbageCollectionSafePoint())
+            fetchFrameData();
     }
 
     Behavior *getLookupClass(Oop receiver, bool superLookup)
@@ -610,7 +607,6 @@ public:
 
             // Push the arguments into an array.
             auto array = Array::basicNativeNew(context, argumentCount);
-            fetchFrameData();
             auto arrayData = reinterpret_cast<Oop*> (array->getFirstFieldPointer());
             for (size_t i = 0; i < argumentCount; ++i)
                 arrayData[argumentCount - i - 1] = stack->stackOopAtOffset((i + 1) * sizeof(Oop));
@@ -618,7 +614,6 @@ public:
 
             // Construct the message object.
             auto messageObject = Message::create(context);
-            fetchFrameData();
             messageObject->selector = actualSelector;
             messageObject->args = popOop();
             messageObject->lookupClass = Oop::fromPointer(getLookupClass(newReceiver, superLookup));
@@ -851,7 +846,6 @@ private:
 
         // Ensure my frame is married.
         stack->ensureFrameIsMarried();
-        fetchFrameData();
 
         pushOop(stack->getThisContext());
 	}
@@ -997,7 +991,6 @@ private:
 
         // Refetch the frame data
         auto array = Array::basicNativeNew(context, arraySize);
-        fetchFrameData();
 
         // Pop elements into the array.
         if(popElements)
@@ -1235,7 +1228,6 @@ private:
 
         // Create the block closure.
         BlockClosure *blockClosure = BlockClosure::create(context, (int)numCopied);
-        fetchFrameData(); // For compaction
 
         // Set the closure data.
         blockClosure->outerContext = stack->getThisContext();
@@ -1982,6 +1974,9 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	for(size_t i = 0; i < numTemporals; ++i)
 		pushOop(Oop());
 
+    // Safe point for GC.
+    garbageCollectionSafePoint();
+
 	// Fetch the frame data.
 	fetchFrameData();
 
@@ -2018,6 +2013,11 @@ void StackInterpreter::callNativeMethod(NativeMethod *nativeMethod, size_t argum
 
 	// Push the receiver oop.
 	pushOop(receiver);
+
+    // Safe point for GC.
+    pushOop(Oop::fromPointer(nativeMethod));
+    garbageCollectionSafePoint();
+    nativeMethod = reinterpret_cast<NativeMethod*> (popOop().pointer);
 
 	// Fetch the frame data.
 	fetchFrameData();
@@ -2077,6 +2077,9 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
     auto copiedElements = closure->getNumberOfElements() - 3;
     for(size_t i = 0; i < copiedElements; ++i)
         pushOop(closure->copiedData[i]);
+
+    // Safe point for GC.
+    garbageCollectionSafePoint();
 
     // Fetch the frame data.
 	fetchFrameData();

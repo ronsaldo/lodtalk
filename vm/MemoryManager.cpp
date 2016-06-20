@@ -283,6 +283,7 @@ uint8_t *VMHeap::allocate(size_t objectSize)
 GarbageCollector::GarbageCollector(MemoryManager *memoryManager)
 	: memoryManager(memoryManager), firstReference(nullptr), lastReference(nullptr), disableCount(0)
 {
+    garbageCollectionQueued = false;
 }
 
 GarbageCollector::~GarbageCollector()
@@ -310,10 +311,10 @@ uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize, bool bigObjec
     std::unique_lock<std::mutex> l(controlMutex);
 
     auto heap = memoryManager->getHeap();
-    if (disableCount == 0 && !heap->hasCapacityFor(objectSize))
-        internalPerformCollection();
-
 	assert(objectSize >= sizeof(ObjectHeader));
+    // Should I enqueue a garbage collection?
+    if (!heap->hasCapacityThresholdBeenReached())
+        queueGarbageCollection();
 
     // Add a forwarding slot, used by compaction.
     auto extraHeaderSize = 8;
@@ -385,6 +386,25 @@ void GarbageCollector::unregisterGCRoot(Oop *gcroot)
 	}
 }
 
+void GarbageCollector::registerThreadForGC()
+{
+}
+
+void GarbageCollector::unregisterThreadForGC()
+{
+}
+
+bool GarbageCollector::collectionSafePoint()
+{
+    if(!garbageCollectionQueued || disableCount > 0)
+        return false;
+
+    //printf("GC time\n");
+    internalPerformCollection();
+    garbageCollectionQueued = false;
+    return true;
+}
+
 void GarbageCollector::registerNativeObject(Oop object)
 {
     std::unique_lock<std::mutex> l(controlMutex);
@@ -408,6 +428,11 @@ void GarbageCollector::internalPerformCollection()
 	// TODO: Suspend the other GC threads.
 	mark();
 	compact();
+}
+
+void GarbageCollector::queueGarbageCollection()
+{
+    garbageCollectionQueued = true;
 }
 
 void GarbageCollector::mark()

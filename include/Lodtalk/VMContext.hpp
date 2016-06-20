@@ -52,6 +52,10 @@ public:
     void registerGCRoot(Oop *gcroot, size_t size);
     void unregisterGCRoot(Oop *gcroot);
 
+    void registerThreadForGC();
+    void unregisterThreadForGC();
+    bool garbageCollectionSafePoint();
+
     void registerNativeObject(Oop object);
 
     // Object memory

@@ -78,6 +78,21 @@ void VMContext::unregisterGCRoot(Oop *gcroot)
 	memoryManager->getGarbageCollector()->unregisterGCRoot(gcroot);
 }
 
+void VMContext::registerThreadForGC()
+{
+    memoryManager->getGarbageCollector()->registerThreadForGC();
+}
+
+void VMContext::unregisterThreadForGC()
+{
+    memoryManager->getGarbageCollector()->unregisterThreadForGC();
+}
+
+bool VMContext::garbageCollectionSafePoint()
+{
+    return memoryManager->getGarbageCollector()->collectionSafePoint();
+}
+
 void VMContext::registerNativeObject(Oop object)
 {
     memoryManager->getGarbageCollector()->registerNativeObject(object);
@@ -192,7 +207,16 @@ LODTALK_VM_EXPORT VMContext *getCurrentContext()
 
 LODTALK_VM_EXPORT void setCurrentContext(VMContext *context)
 {
+    auto oldContext = currentContext;
     currentContext = context;
+
+    if(oldContext != context)
+    {
+        if(oldContext)
+            oldContext->unregisterThreadForGC();
+        if(context)
+            context->registerThreadForGC();
+    }
 }
 
 } // End of namespace Lodtalk
