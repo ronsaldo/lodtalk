@@ -1307,7 +1307,7 @@ private:
 
             auto ca = a.decodeCharacter();
             auto cb = b.decodeCharacter();
-            pushOop(Oop::encodeCharacter(ca + cb));
+            pushOop(Oop::encodeCharacter(ca - cb));
         }
         else if(a.isFloatOrInt() && b.isFloatOrInt())
         {
@@ -1316,7 +1316,7 @@ private:
 
             auto fa = a.decodeFloatOrInt();
             auto fb = b.decodeFloatOrInt();
-            pushFloatObject(fa + fb);
+            pushFloatObject(fa - fb);
         }
         else
         {

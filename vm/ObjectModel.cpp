@@ -167,11 +167,15 @@ uint64_t VMContext::positiveInt64ValueOf(Oop value)
 
 Oop VMContext::floatObjectFor(double value)
 {
+    if(floatFitsInSmallFloat(value))
+        return Oop::encodeSmallFloat(value);
     LODTALK_UNIMPLEMENTED();
 }
 
 double VMContext::floatValueOf(Oop object)
 {
+    if(object.isSmallFloat())
+        return object.decodeSmallFloat();
     LODTALK_UNIMPLEMENTED();
 }
 

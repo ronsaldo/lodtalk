@@ -274,6 +274,8 @@ class LODTALK_VM_EXPORT Float: public Number
 public:
     static SpecialNativeClassFactory Factory;
 
+    static int stPrintString(InterpreterProxy *interpreter);
+
     static int stAdd(InterpreterProxy *interpreter);
     static int stSub(InterpreterProxy *interpreter);
     static int stLess(InterpreterProxy *interpreter);
@@ -295,6 +297,17 @@ public:
  * SmallFloat
  */
 class LODTALK_VM_EXPORT SmallFloat: public Float
+{
+public:
+    static SpecialNativeClassFactory Factory;
+
+    static int stPrintString(InterpreterProxy *interpreter);
+};
+
+/**
+ * BoxedFloat
+ */
+class LODTALK_VM_EXPORT BoxedFloat: public Float
 {
 public:
     static SpecialNativeClassFactory Factory;

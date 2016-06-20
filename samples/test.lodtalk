@@ -120,6 +120,11 @@ main
 
     self printLine: self printClosureMaker value "outerContext closureOrNil name".
 
+    self printLine: 2.5.
+    self printLine: 1.0 + 2.5.
+    self printLine: 1.0 + -2.5.
+    self printLine: 1.0 - 2.5.
+
 ].
 
 self function [
@@ -135,7 +140,7 @@ recursion: levels
 
 self function [
 main
-    self recursion: 3000.
-    self halt.
-    "Program new main"
+    "self recursion: 3000."
+    "self halt."
+    Program new main
 ].

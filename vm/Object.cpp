@@ -741,6 +741,22 @@ SpecialNativeClassFactory SmallInteger::Factory("SmallInteger", SCI_SmallInteger
 });
 
 // Float
+int Float::stPrintString(InterpreterProxy *interpreter)
+{
+    if(interpreter->getArgumentCount() != 0)
+        return interpreter->primitiveFailed();
+
+    auto self = interpreter->getReceiver();
+    if(!self.isFloat())
+        nativeError("expected a small integer.");
+
+    char buffer[128];
+    snprintf(buffer, 127, "%f", self.decodeFloat());
+
+    auto result = Oop::fromPointer(ByteString::fromNativeRange(interpreter->getContext(), buffer, strlen(buffer)));
+    return interpreter->returnOop(result);
+}
+
 int Float::stAdd(InterpreterProxy *interpreter)
 {
     if (interpreter->getArgumentCount() != 1)
@@ -969,12 +985,18 @@ SpecialNativeClassFactory Float::Factory("Float", SCI_Float, &Number::Factory, [
         .addPrimitiveMethod(51, "truncated", Float::stTruncated)
         .addPrimitiveMethod(52, "fractionPart", Float::stFractionPart)
         .addPrimitiveMethod(53, "exponent", Float::stExponent)
-        .addPrimitiveMethod(54, "timesTwoPower:", Float::stTimesTwoPower);
+        .addPrimitiveMethod(54, "timesTwoPower:", Float::stTimesTwoPower)
+
+        .addMethod("printString", Float::stPrintString);
 
 });
 
 // SmallFloat
 SpecialNativeClassFactory SmallFloat::Factory("SmallFloat", SCI_SmallFloat, &Float::Factory, [](ClassBuilder &builder) {
+});
+
+// BoxedFloat
+SpecialNativeClassFactory BoxedFloat::Factory("BoxedFloat", SCI_BoxedFloat, &Float::Factory, [](ClassBuilder &builder) {
 });
 
 // Character

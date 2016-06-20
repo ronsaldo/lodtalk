@@ -62,6 +62,11 @@ struct ObjectTag
 
 static constexpr uintptr_t IdentityHashMask = (1<<22) - 1;
 static constexpr uintptr_t ObjectAlignment = 8;
+static constexpr uint32_t SmallFloatExponentOffset = /* 1023 - 127 */ 896;
+static constexpr uint32_t SmallFloatExponentMin = /* 1023 - 127 */ SmallFloatExponentOffset;
+static constexpr uint32_t SmallFloatExponentMax = /* 1023 + 128 */ 1151;
+
+
 
 enum ObjectFormat
 {
@@ -361,6 +366,45 @@ inline bool signedFitsInSmallInteger(intptr_t value)
     return SmallIntegerMin <= value && value <= SmallIntegerMax;
 }
 
+inline uint64_t reinterpretDoubleAsUInt64(double value)
+{
+    return *reinterpret_cast<int64_t*> (&value);
+}
+
+inline double reinterpretUInt64AsDouble(uint64_t value)
+{
+    return *reinterpret_cast<double*> (&value);
+}
+
+inline uint64_t extractMantissaOfDoubleBits(uint64_t value)
+{
+    return value & uint64_t(0xfffffffffffffull);
+}
+
+inline uint32_t extractExponentOfDoubleBits(uint64_t value)
+{
+    return (value >> uint64_t(52)) & 0x7ff;
+}
+
+inline bool floatFitsInSmallFloat(double value)
+{
+    auto bits = reinterpretDoubleAsUInt64(value);
+    auto exponent = extractExponentOfDoubleBits(bits);
+    return SmallFloatExponentMin <= exponent || exponent <= SmallFloatExponentMax;
+}
+
+template<typename T>
+constexpr T rotateLeft1(T value)
+{
+    return (value << T(1)) | (value >> T(sizeof(T)*8 - 1));
+}
+
+template<typename T>
+constexpr T rotateRight1(T value)
+{
+    return (value << T(sizeof(T)*8 - 1)) | (value >> T(1));
+}
+
 // Some special objects
 class UndefinedObject;
 class True;
@@ -431,7 +475,7 @@ public:
 
     inline bool isFloat() const
     {
-        return isSmallFloat() || (isPointer() && header->classIndex == SCI_Float);
+        return isSmallFloat() || (isPointer() && header->classIndex == SCI_BoxedFloat);
     }
 
     inline bool isFloatOrInt() const
@@ -485,11 +529,6 @@ public:
 		return Oop((character << ObjectTag::CharacterShift) | ObjectTag::Character);
 	}
 
-    inline double decodeSmallFloat() const
-    {
-        LODTALK_UNIMPLEMENTED();
-    }
-
     inline double decodeFloat() const
     {
         assert(isFloat());
@@ -506,9 +545,33 @@ public:
         return decodeFloat();
     }
 
+    inline double decodeSmallFloat() const
+    {
+#ifdef LODTALK_HAS_SMALLFLOAT
+        assert(isSmallFloat());
+        auto bits = static_cast<uint64_t> (uintValue);
+        bits >>= 3;
+        bits += uint64_t(SmallFloatExponentOffset) << uint64_t(53);
+        bits = rotateRight1(bits);
+        return reinterpretUInt64AsDouble(bits);
+#else
+        abort();
+#endif
+    }
+
     static inline Oop encodeSmallFloat(double value)
     {
-        LODTALK_UNIMPLEMENTED();
+#ifdef LODTALK_HAS_SMALLFLOAT
+        assert(floatFitsInSmallFloat(value));
+        auto bits = reinterpretDoubleAsUInt64(value);
+        bits = rotateLeft1(bits);
+        bits -= uint64_t(SmallFloatExponentOffset) << uint64_t(53);
+        bits <<= 3;
+        bits |= ObjectTag::SmallFloat;
+        return Oop(bits);
+#else
+        abort();
+#endif
     }
 
     inline bool isExternalHandle() const
