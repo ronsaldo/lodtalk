@@ -60,7 +60,8 @@ struct ObjectTag
 #endif
 };
 
-static const uintptr_t IdentityHashMask = (1<<22) - 1;
+static constexpr uintptr_t IdentityHashMask = (1<<22) - 1;
+static constexpr uintptr_t ObjectAlignment = 8;
 
 enum ObjectFormat
 {
@@ -312,7 +313,7 @@ inline size_t variableSlotDivisor(ObjectFormat format)
 #endif
 };
 
-inline constexpr unsigned int generateIdentityHash(void *ptr)
+inline const unsigned int generateIdentityHash(void *ptr)
 {
 	return (unsigned int)((reinterpret_cast<uintptr_t> (ptr) >> ObjectTag::TagBits) & IdentityHashMask);
 }
@@ -338,7 +339,7 @@ struct ObjectHeader
 		return {0, true, true, identityHash, 0, OF_EMPTY, 0, classIndex};
 	}
 
-	static constexpr ObjectHeader emptyNativeClass(void *self, unsigned int classIndex)
+	static ObjectHeader emptyNativeClass(void *self, unsigned int classIndex)
 	{
 		return {0, true, true, generateIdentityHash(self), 0, OF_EMPTY, 0, classIndex};
 	}
@@ -372,19 +373,19 @@ extern LODTALK_VM_EXPORT False FalseObject;
 struct LODTALK_VM_EXPORT Oop
 {
 private:
-	constexpr Oop(uint8_t *pointer) : pointer(pointer) {}
-	constexpr Oop(intptr_t intValue) : intValue(intValue) {}
-	constexpr Oop(int, uintptr_t uintValue) : uintValue(uintValue) {}
+	Oop(uint8_t *pointer) : pointer(pointer) {}
+	Oop(intptr_t intValue) : intValue(intValue) {}
+	Oop(int, uintptr_t uintValue) : uintValue(uintValue) {}
 
 public:
-	constexpr Oop() : pointer(reinterpret_cast<uint8_t*> (&NilObject)) {}
+	Oop() : pointer(reinterpret_cast<uint8_t*> (&NilObject)) {}
 
 	static Oop fromPointer(void *pointer)
 	{
 		return Oop(reinterpret_cast<uint8_t*> (pointer));
 	}
 
-	static constexpr Oop fromRawUIntPtr(uintptr_t value)
+	static const Oop fromRawUIntPtr(uintptr_t value)
 	{
 		return Oop(0, value);
 	}
@@ -452,8 +453,6 @@ public:
 	{
 		if(!isPointer())
 			return nullptr;
-		if(header->slotCount == 255)
-			return pointer + sizeof(ObjectHeader) + 8;
 		return pointer + sizeof(ObjectHeader);
 	}
 
@@ -461,8 +460,6 @@ public:
 	{
 		if(!isPointer())
 			return nullptr;
-		if(header->slotCount == 255)
-			return pointer + sizeof(ObjectHeader) + 8;
 		return pointer + sizeof(ObjectHeader) + getFixedSlotCount(context)*sizeof(void*);
 	}
 
@@ -472,7 +469,7 @@ public:
 		return intValue >> ObjectTag::SmallIntegerShift;
 	}
 
-	static constexpr Oop encodeSmallInteger(SmallIntegerValue integer)
+	static const Oop encodeSmallInteger(SmallIntegerValue integer)
 	{
 		return Oop((integer << ObjectTag::SmallIntegerShift) | ObjectTag::SmallInteger);
 	}
@@ -483,7 +480,7 @@ public:
 		return int(intValue >> ObjectTag::CharacterShift);
 	}
 
-	static constexpr Oop encodeCharacter(int character)
+	static const Oop encodeCharacter(int character)
 	{
 		return Oop((character << ObjectTag::CharacterShift) | ObjectTag::Character);
 	}
@@ -551,12 +548,12 @@ public:
 		return intValue < o.intValue;
 	}
 
-	static constexpr Oop trueObject()
+	static const Oop trueObject()
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&TrueObject));
 	}
 
-	static constexpr Oop falseObject()
+	static const Oop falseObject()
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&FalseObject));
 	}
@@ -565,7 +562,7 @@ public:
 	{
 		if(header->slotCount == 255)
 		{
-			uint64_t *theSlotCount = reinterpret_cast<uint64_t*> (pointer + sizeof(ObjectHeader));
+			uint64_t *theSlotCount = reinterpret_cast<uint64_t*> (pointer - 8);
 			return static_cast<size_t> (*theSlotCount);
 		}
 
@@ -622,17 +619,17 @@ public:
 // Ensure the object oriented pointer is a pointer.
 static_assert(sizeof(Oop) == sizeof(void*), "Oop structure has to be a pointer.");
 
-inline constexpr Oop nilOop()
+inline const Oop nilOop()
 {
 	return Oop();
 }
 
-inline constexpr Oop trueOop()
+inline const Oop trueOop()
 {
 	return Oop::trueObject();
 }
 
-inline constexpr Oop falseOop()
+inline const Oop falseOop()
 {
 	return Oop::falseObject();
 }
@@ -657,7 +654,7 @@ struct LODTALK_VM_EXPORT CompiledMethodHeader
 	static const size_t FlagBit = 1u<<30;
 	static const size_t AlternateBytecodeBit = 1u<<31;
 
-	constexpr CompiledMethodHeader(Oop oop) : oop(oop) {}
+	CompiledMethodHeader(Oop oop) : oop(oop) {}
 
 	static CompiledMethodHeader create(size_t literalCount, size_t temporalCount, size_t argumentCount, size_t extraFlags)
 	{
@@ -706,15 +703,6 @@ struct LODTALK_VM_EXPORT CompiledMethodHeader
 	}
 
 	Oop oop;
-};
-
-/**
- * Object header when the slot count is greater or equal to 255.
- */
-struct BigObjectHeader
-{
-	ObjectHeader header;
-	uint64_t slotCount;
 };
 
 class ClassDescription;

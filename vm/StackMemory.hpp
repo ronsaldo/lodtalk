@@ -177,7 +177,7 @@ public:
 			f(*pos);
 
         // The arguments.
-        auto argumentCount = getArgumentCount() + 1; // Plus the receiver argument.
+        size_t argumentCount = getArgumentCount() + 1; // Plus the receiver argument.
         Oop *arguments = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset);
         for (size_t i = 0; i < argumentCount; ++i)
             f(arguments[i]);
@@ -243,7 +243,7 @@ public:
         baseFramePointer = stackPageHighest;
         headFrame = StackFrame(nullptr, stackPageHighest);
     }
-    
+
     inline void freed()
     {
         baseFramePointer = nullptr;

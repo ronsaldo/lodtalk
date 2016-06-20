@@ -30,11 +30,7 @@ public:
 
 	uint8_t *getFirstFieldPointer()
 	{
-		uint8_t *result = reinterpret_cast<uint8_t *> (&object_header_);
-		result += sizeof(ObjectHeader);
-		if(object_header_.slotCount == 255)
-			result += 8;
-		return result;
+		return reinterpret_cast<uint8_t *> (&object_header_) + sizeof(ObjectHeader);
 	}
 
 	size_t getNumberOfElements()
@@ -267,7 +263,7 @@ public:
     static int stBitShift(InterpreterProxy *interpreter);
 
     static int stAsFloat(InterpreterProxy *interpreter);
-    
+
 };
 
 /**

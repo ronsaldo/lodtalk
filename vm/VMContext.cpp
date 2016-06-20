@@ -83,9 +83,9 @@ void VMContext::registerNativeObject(Oop object)
     memoryManager->getGarbageCollector()->registerNativeObject(object);
 }
 
-uint8_t *VMContext::allocateObjectMemory(size_t objectSize)
+uint8_t *VMContext::allocateObjectMemory(size_t objectSize, bool bigObject)
 {
-	return memoryManager->getGarbageCollector()->allocateObjectMemory(objectSize);
+	return memoryManager->getGarbageCollector()->allocateObjectMemory(objectSize, bigObject);
 }
 
 MemoryManager *VMContext::getMemoryManager()

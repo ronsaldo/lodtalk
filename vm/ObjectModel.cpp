@@ -50,13 +50,12 @@ ObjectHeader *VMContext::newObject(size_t fixedSlotCount, size_t indexableSize, 
 	// Compute more sizes
 	auto totalSlotCount = fixedSlotCount + indexableSlotCount;
 	auto headerSize = sizeof(ObjectHeader);
-	if(totalSlotCount >= 255)
-		headerSize += 8;
+    auto bigObject = totalSlotCount >= 255;
 	auto bodySize = totalSlotCount * sizeof(void*);
 	auto objectSize = headerSize + bodySize;
 
 	// Allocate the object memory
-	auto data = allocateObjectMemory(objectSize);
+	auto data = allocateObjectMemory(objectSize, bigObject);
 	auto header = reinterpret_cast<ObjectHeader*> (data);
 
 	// Generate a hash if requested.
@@ -69,11 +68,8 @@ ObjectHeader *VMContext::newObject(size_t fixedSlotCount, size_t indexableSize, 
 	header->identityHash = identityHash;
 	header->objectFormat = format + indexableFormatExtraBits;
 	header->classIndex = classIndex;
-	if(totalSlotCount >= 255)
-	{
-		auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-		bigHeader->slotCount = totalSlotCount;
-	}
+	if(bigObject)
+        reinterpret_cast<uint64_t*> (header)[-1] = totalSlotCount;
 
 	// Initialize the slots.
 	auto slotStarts = data + headerSize;

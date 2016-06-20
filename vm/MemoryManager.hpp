@@ -135,7 +135,7 @@ public:
 
     void initialize();
 
-	uint8_t *allocateObjectMemory(size_t objectSize);
+	uint8_t *allocateObjectMemory(size_t objectSize, bool bigObject);
 
 	void performCollection();
 

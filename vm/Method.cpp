@@ -37,13 +37,12 @@ CompiledMethod *CompiledMethod::newMethodWithHeader(VMContext *context, size_t n
 
 	// Compute the header size.
 	auto headerSize = sizeof(ObjectHeader);
-	if(slotCount >= 255)
-		headerSize += 8;
 	auto bodySize = slotCount*sizeof(void*);
 	auto objectSize = headerSize + bodySize;
 
 	// Allocate the compiled method
-	auto methodData = context->allocateObjectMemory(objectSize);
+    auto bigObject = slotCount >= 255;
+	auto methodData = context->allocateObjectMemory(objectSize, bigObject);
 	auto objectHeader = reinterpret_cast<ObjectHeader*> (methodData);
 
 	// Set the method header
@@ -51,11 +50,8 @@ CompiledMethod *CompiledMethod::newMethodWithHeader(VMContext *context, size_t n
 	objectHeader->identityHash = generateIdentityHash(methodData);
 	objectHeader->objectFormat = (unsigned int)(OF_COMPILED_METHOD + extraFormatBits);
 	objectHeader->classIndex = SCI_CompiledMethod;
-	if(slotCount >= 255)
-	{
-		auto bigHeader = reinterpret_cast<BigObjectHeader*> (objectHeader);
-		bigHeader->slotCount = slotCount;
-	}
+	if(bigObject)
+        reinterpret_cast<uint64_t*> (objectHeader)[-1] = slotCount;
 
 	// Initialize the literals to nil
 	auto methodBody = reinterpret_cast<Oop*> (methodData + headerSize);

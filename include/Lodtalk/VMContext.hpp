@@ -55,7 +55,7 @@ public:
     void registerNativeObject(Oop object);
 
     // Object memory
-    uint8_t *allocateObjectMemory(size_t objectSize);
+    uint8_t *allocateObjectMemory(size_t objectSize, bool bigObject);
     ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectFormat format, int classIndex, int identityHash = -1);
 
     ObjectHeader *basicNativeNewFromClassIndex(size_t classIndex);

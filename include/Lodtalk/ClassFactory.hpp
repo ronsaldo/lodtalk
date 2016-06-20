@@ -61,7 +61,7 @@ public:
         return name;
     }
 
-    virtual AbstractClassFactory *getSuperClass() const
+    virtual AbstractClassFactory *getSuperClass() const override
     {
         return superClass;
     }

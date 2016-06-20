@@ -85,19 +85,64 @@ void ClassTable::allocatePage()
 // Extra forwarding pointer used for compaction
 struct AllocatedObject
 {
-    uint8_t *forwardingPointer;
-    ObjectHeader header;
-    uint64_t extraSlotCount;
+    uint64_t rawForwardingPointer;
 
-    size_t computeSize()
+    union
     {
-        auto size = sizeof(void*) + sizeof(ObjectHeader);
-        if(header.slotCount == 255)
-            size += 8 + extraSlotCount*sizeof(void*);
+        struct
+        {
+            uint64_t extraSlotCount;
+            ObjectHeader header;
+        } bigObject;
+
+        struct
+        {
+            ObjectHeader header;
+        } smallObject;
+    };
+
+    size_t computeSize() const
+    {
+        auto size = 8 + sizeof(ObjectHeader);
+        if(isBigObject())
+            size += 8 + bigObject.extraSlotCount*sizeof(void*);
         else
-            size += header.slotCount*sizeof(void*);
+            size += smallObject.header.slotCount*sizeof(void*);
 
         return size;
+    }
+
+    bool isBigObject() const
+    {
+        return (rawForwardingPointer & 1) != 0;
+    }
+
+    void *getForwardingPointer() const
+    {
+        return reinterpret_cast<void*> (uintptr_t(rawForwardingPointer & (-ObjectAlignment)));
+    }
+
+    void *getForwardingDestination() const
+    {
+        auto offset = isBigObject() ? 16 : 8;
+        return reinterpret_cast<uint8_t*> (getForwardingPointer()) - offset;
+    }
+
+    void setForwardingPointer(void *newPointer)
+    {
+        auto newPointerValue = reinterpret_cast<uintptr_t> (newPointer) & (-ObjectAlignment);
+        newPointerValue |= rawForwardingPointer & (ObjectAlignment - 1);
+        rawForwardingPointer = newPointerValue;
+    }
+
+    ObjectHeader &header()
+    {
+        return isBigObject() ? bigObject.header : smallObject.header;
+    }
+
+    uint64_t slotCount()
+    {
+        return isBigObject() ? bigObject.extraSlotCount : smallObject.header.slotCount;
     }
 };
 
@@ -260,22 +305,26 @@ void GarbageCollector::disable()
     ++disableCount;
 }
 
-uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
+uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize, bool bigObject)
 {
     std::unique_lock<std::mutex> l(controlMutex);
 
     auto heap = memoryManager->getHeap();
     if (disableCount == 0 && !heap->hasCapacityFor(objectSize))
         internalPerformCollection();
-	    
+
 	assert(objectSize >= sizeof(ObjectHeader));
 
     // Add a forwarding slot, used by compaction.
-    objectSize += sizeof(void*);
+    auto extraHeaderSize = 8;
+    if(bigObject)
+        extraHeaderSize += 8;
 
 	// Allocate from the VM heap.
-    auto result = memoryManager->getHeap()->allocate(objectSize);
-    result += sizeof(void*);
+    auto result = memoryManager->getHeap()->allocate(objectSize + extraHeaderSize);
+    auto allocatedObjectHeader = reinterpret_cast<AllocatedObject*> (result);
+    allocatedObjectHeader->rawForwardingPointer = bigObject ? 1 : 0;
+    result += extraHeaderSize;
 
 	auto header = reinterpret_cast<ObjectHeader*> (result);
 	*header = {0};
@@ -394,11 +443,7 @@ void GarbageCollector::markObject(Oop objectPointer)
 		auto slotCount = header->slotCount;
 		auto headerSize = sizeof(ObjectHeader);
 		if(slotCount == 255)
-		{
-			auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-			slotCount = (unsigned int)bigHeader->slotCount;
-			headerSize += 8;
-		}
+            slotCount = reinterpret_cast<uint64_t*> (header)[-1];
 
 		// Traverse the slots.
 		auto slots = reinterpret_cast<Oop*> (objectPointer.pointer + headerSize);
@@ -438,15 +483,15 @@ void GarbageCollector::compact()
         auto liveSize = liveHeader->computeSize();
 
         // Is this object not condemned?
-        if(liveHeader->header.gcColor != White)
+        if(liveHeader->header().gcColor != White)
         {
-            liveHeader->forwardingPointer = freeAddress + sizeof(void*);
+            liveHeader->setForwardingPointer(freeAddress + sizeof(void*));
             freeAddress += liveSize;
         }
         else
         {
             //printf("Free %s\n", memoryManager->getContext()->getClassNameOfObject(Oop::fromPointer(&liveHeader->header)).c_str());
-            liveHeader->forwardingPointer = nullptr;
+            liveHeader->setForwardingPointer(nullptr);
             ++freeCount;
         }
 
@@ -475,8 +520,8 @@ void GarbageCollector::compact()
         auto liveSize = liveHeader->computeSize();
 
         // Is this object not condemned?
-        if(liveHeader->header.gcColor != White)
-            updatePointersOf(Oop::fromPointer(&liveHeader->header));
+        if(liveHeader->header().gcColor != White)
+            updatePointersOf(Oop::fromPointer(&liveHeader->header()));
 
         // Process the next object.
         live += liveSize;
@@ -502,13 +547,13 @@ void GarbageCollector::compact()
         auto liveSize = liveHeader->computeSize();
 
         // Is this object not condemned?
-        if(liveHeader->header.gcColor != White)
+        if(liveHeader->header().gcColor != White)
         {
             // Clear the color of the object for the next garbage collection.
-            liveHeader->header.gcColor = White;
+            liveHeader->header().gcColor = White;
 
             // Move the object.
-            auto destination = liveHeader->forwardingPointer - sizeof(void*);
+            auto destination = liveHeader->getForwardingDestination();
             //printf("Move %p %p\n", destination, liveHeader);
             memmove(destination, liveHeader, liveSize);
 
@@ -541,7 +586,7 @@ void GarbageCollector::abortCompaction()
         auto liveSize = liveHeader->computeSize();
 
         // Set the color to white.
-        liveHeader->header.gcColor = White;
+        liveHeader->header().gcColor = White;
 
         // Process the next object.
         live += liveSize;
@@ -592,11 +637,7 @@ void GarbageCollector::updatePointersOf(Oop object)
 		auto slotCount = header->slotCount;
 		auto headerSize = sizeof(ObjectHeader);
 		if(slotCount == 255)
-		{
-			auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-			slotCount = (unsigned int)bigHeader->slotCount;
-			headerSize += 8;
-		}
+            slotCount = reinterpret_cast<uint64_t*> (header)[-1];
 
 		// Traverse the slots.
 		auto slots = reinterpret_cast<Oop*> (object.pointer + headerSize);
